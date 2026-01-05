@@ -2,323 +2,292 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>RaizCuadra CAD - Pro Sketcher</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/paper.js/0.12.15/paper-full.min.js"></script>
+    <title>RaizCuadra CAD - Pure Vanilla</title>
     <style>
         :root {
             --bg: #0a0a0a; --panel: #141414; --accent: #00ff41; 
             --blue: #3b82f6; --dim: #fbbf24; --red: #ff4d4d;
         }
-        body { margin: 0; background: var(--bg); color: white; font-family: 'Segoe UI', monospace; display: flex; height: 100vh; overflow: hidden; }
+        body { margin: 0; background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; overflow: hidden; }
         
-        #sidebar { width: 250px; background: var(--panel); border-right: 1px solid #333; display: flex; flex-direction: column; padding: 15px; z-index: 100; }
-        .tool-group h3 { font-size: 10px; color: var(--accent); text-transform: uppercase; border-bottom: 1px solid #333; padding-bottom: 5px; margin: 15px 0 10px; letter-spacing: 1px; }
+        #sidebar { width: 220px; background: var(--panel); border-right: 1px solid #333; padding: 15px; z-index: 10; display: flex; flex-direction: column; }
+        .tool-group h3 { font-size: 10px; color: var(--accent); text-transform: uppercase; border-bottom: 1px solid #333; padding-bottom: 5px; margin: 15px 0 10px; }
         
         .btn { 
             width: 100%; background: #1a1a1a; border: 1px solid #333; color: #888; 
             padding: 10px; margin: 3px 0; cursor: pointer; text-align: left; 
-            font-size: 11px; transition: 0.2s; border-radius: 4px; display: flex; align-items: center;
+            font-size: 11px; transition: 0.2s; border-radius: 4px;
         }
-        .btn:hover { border-color: var(--accent); color: white; }
-        .btn.active { background: #222; border-color: var(--accent); color: var(--accent); font-weight: bold; }
-        
-        #viewport { flex-grow: 1; position: relative; cursor: crosshair; background: var(--bg); }
-        canvas { width: 100%; height: 100%; }
-        
-        /* Editor de cotas flotante */
-        #dim-panel { 
-            position: absolute; display: none; background: #222; border: 1px solid var(--accent);
-            padding: 8px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); z-index: 1000;
-        }
-        #dim-panel input { background: #000; border: 1px solid #444; color: var(--accent); width: 70px; padding: 5px; text-align: center; font-weight: bold; outline: none; }
-        #dim-panel label { font-size: 9px; display: block; margin-bottom: 4px; color: #888; }
+        .btn:hover, .btn.active { border-color: var(--accent); color: white; background: #222; }
 
-        .status-bar { 
-            position: absolute; bottom: 0; left: 0; right: 0; 
-            background: rgba(10,10,10,0.9); padding: 8px 15px; 
-            font-size: 10px; display: flex; gap: 20px; border-top: 1px solid #333; 
+        #viewport { flex-grow: 1; position: relative; overflow: hidden; background: #000; }
+        canvas { display: block; }
+
+        /* Input Flotante para Cotas */
+        #dim-editor {
+            position: absolute; display: none; background: #222; border: 1px solid var(--accent);
+            padding: 5px; border-radius: 4px; z-index: 100;
         }
+        #dim-editor input { background: #000; border: none; color: var(--accent); width: 60px; text-align: center; outline: none; font-weight: bold; }
+
+        .status { position: absolute; bottom: 10px; left: 230px; font-size: 10px; color: #555; display: flex; gap: 15px; }
     </style>
 </head>
 <body>
 
 <div id="sidebar">
-    <div style="font-size: 18px; font-weight: bold; margin-bottom: 20px; color: var(--accent); text-align: center;">RAIZ_CUADRA CAD</div>
+    <div style="font-size: 16px; font-weight: bold; color: var(--accent); margin-bottom: 20px;">RAIZ_CUADRA CAD</div>
     
     <div class="tool-group">
-        <h3>Entidades</h3>
-        <button class="btn active" id="tool-line" onclick="setMode('LINE')">LÍNEA</button>
-        <button class="btn" id="tool-rect" onclick="setMode('RECT')">RECTÁNGULO</button>
-        <button class="btn" id="tool-circle" onclick="setMode('CIRCLE')">CÍRCULO</button>
+        <h3>Dibujo</h3>
+        <button class="btn active" onclick="setMode('LINE')">LÍNEA</button>
+        <button class="btn" onclick="setMode('RECT')">RECTÁNGULO</button>
     </div>
 
     <div class="tool-group">
-        <h3>Restricciones</h3>
-        <button class="btn" onclick="addRelation('HORIZ')">HORIZONTAL</button>
-        <button class="btn" onclick="addRelation('VERT')">VERTICAL</button>
-        <button class="btn" onclick="addRelation('FIX')">FIJAR</button>
+        <h3>Acotación</h3>
+        <button class="btn" onclick="setMode('DIM')">COTA INTELIGENTE</button>
+        <button class="btn" onclick="setMode('ANGLE')">COTA ANGULAR</button>
     </div>
 
-    <div class="tool-group">
-        <h3>Dimensionado</h3>
-        <button class="btn" id="tool-dim" onclick="setMode('DIM')">COTA INTELIGENTE</button>
-    </div>
-
-    <div style="margin-top: auto; font-size: 9px; color: #555;">
-        DOF: <span id="dof-count">0</span> | V 2.0
-    </div>
+    <div style="margin-top: auto; font-size: 9px; color: #444;">VANILLA JS ENGINE // NO LIBS</div>
 </div>
 
 <div id="viewport">
-    <canvas id="cadCanvas" resize></canvas>
+    <canvas id="cadCanvas"></canvas>
     
-    <div id="dim-panel">
-        <label>MODIFICAR COTA</label>
-        <input type="number" id="dim-input" step="1">
+    <div id="dim-editor">
+        <input type="number" id="dim-val">
     </div>
 
-    <div class="status-bar">
-        <span style="color:var(--blue)">● SUBDEFINIDO</span>
-        <span style="color:var(--accent)">● DEFINIDO</span>
-        <span style="color:var(--dim)">● COTA SELECCIONADA</span>
+    <div class="status">
+        <span>● ORIGEN (0,0)</span>
+        <span>● SNAP ACTIVO</span>
+        <span id="coord-display">X: 0 Y: 0</span>
     </div>
 </div>
 
 <script>
-paper.setup('cadCanvas');
-const { Path, Point, Color, Group, TextItem, Shape } = paper;
+const canvas = document.getElementById('cadCanvas');
+const ctx = canvas.getContext('2d');
+const dimEditor = document.getElementById('dim-editor');
+const dimInput = document.getElementById('dim-val');
 
-// --- CONFIGURACIÓN Y SOLVER ---
-class CADSolver {
-    constructor() {
-        this.constraints = [];
-    }
-    solve() {
-        for (let i = 0; i < 40; i++) {
-            this.constraints.forEach(c => {
-                if(c.type === 'FIX') { c.p.x = c.x; c.p.y = c.y; }
-                if(c.type === 'HORIZ') { let ay = (c.p1.y + c.p2.y)/2; c.p1.y = ay; c.p2.y = ay; }
-                if(c.type === 'VERT') { let ax = (c.p1.x + c.p2.x)/2; c.p1.x = ax; c.p2.x = ax; }
-                if(c.type === 'DIST') {
-                    let d = c.p1.getDistance(c.p2);
-                    if(d < 0.1) return;
-                    let factor = (d - c.val) / d * 0.5;
-                    let dx = (c.p2.x - c.p1.x) * factor;
-                    let dy = (c.p2.y - c.p1.y) * factor;
-                    c.p1.x += dx; c.p1.y += dy;
-                    c.p2.x -= dx; c.p2.y -= dy;
-                }
-            });
-        }
-    }
-}
-
-const solver = new CADSolver();
+let width, height, centerX, centerY;
 let mode = 'LINE';
 let entities = [];
+let points = [];
 let dimensions = [];
-const origin = paper.view.center;
-const snapDist = 15;
+let isDragging = false;
+let startPoint = null;
+let currentMouse = { x: 0, y: 0 };
+let selectedEntity = null;
 
-// --- DIBUJAR EJES Y ORIGEN ---
-const drawEnvironment = () => {
-    const axes = new Group();
-    // Ejes infinitos (línea constructiva)
-    const xAxis = new Path.Line([-10000, origin.y], [10000, origin.y]);
-    const yAxis = new Path.Line([origin.x, -10000], [origin.x, 10000]);
-    [xAxis, yAxis].forEach(a => {
-        a.strokeColor = '#222';
-        a.dashArray = [4, 4];
-        a.locked = true;
-    });
-    // Origen
-    const o = new Path.Circle(origin, 4);
-    o.strokeColor = varColor('--accent');
-    o.strokeWidth = 1;
-};
-drawEnvironment();
+// --- INICIALIZACIÓN ---
+function resize() {
+    width = canvas.width = window.innerWidth - 220;
+    height = canvas.height = window.innerHeight;
+    centerX = width / 2;
+    centerY = height / 2;
+    draw();
+}
+window.addEventListener('resize', resize);
+resize();
 
-function varColor(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+// --- LÓGICA DE DIBUJO ---
+function draw() {
+    ctx.clearRect(0, 0, width, height);
+    
+    // 1. Dibujar Rejilla y Ejes
+    drawGrid();
+    
+    // 2. Dibujar Entidades
+    entities.forEach(ent => drawEntity(ent));
+    
+    // 3. Dibujar Cotas
+    dimensions.forEach(dim => drawDimension(dim));
 
-// --- SISTEMA DE SNAPPING ---
-function getSnapPoint(point) {
-    // Snap al origen
-    if(point.getDistance(origin) < snapDist) return origin.clone();
-    // Snap a ejes
-    if(Math.abs(point.y - origin.y) < snapDist) return new Point(point.x, origin.y);
-    if(Math.abs(point.x - origin.x) < snapDist) return new Point(origin.x, point.y);
-    // Snap a otros puntos
-    for(let ent of entities) {
-        for(let seg of ent.segments) {
-            if(point.getDistance(seg.point) < snapDist && point !== seg.point) return seg.point.clone();
-        }
+    // 4. Dibujar Línea temporal mientras arrastras
+    if (isDragging && startPoint) {
+        ctx.beginPath();
+        ctx.setLineDash([5, 5]);
+        ctx.moveTo(startPoint.x + centerX, startPoint.y + centerY);
+        ctx.lineTo(currentMouse.x + centerX, currentMouse.y + centerY);
+        ctx.strokeStyle = '#3b82f6';
+        ctx.stroke();
+        ctx.setLineDash([]);
     }
-    return point;
+
+    requestAnimationFrame(draw);
 }
 
-const tool = new paper.Tool();
-let activeEntity = null;
-let selectedDim = null;
+function drawGrid() {
+    // Ejes Principales
+    ctx.beginPath();
+    ctx.strokeStyle = '#1a1a1a';
+    ctx.moveTo(centerX, 0); ctx.lineTo(centerX, height);
+    ctx.moveTo(0, centerY); ctx.lineTo(width, centerY);
+    ctx.stroke();
 
-tool.onMouseDown = (event) => {
-    const hit = paper.project.hitTest(event.point, { segments: true, stroke: true, tolerance: 5 });
+    // Origen
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, 4, 0, Math.PI * 2);
+    ctx.strokeStyle = '#00ff41';
+    ctx.stroke();
+}
+
+function drawEntity(ent) {
+    ctx.beginPath();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = ent.selected ? '#fbbf24' : '#3b82f6';
+
+    if (ent.type === 'LINE') {
+        ctx.moveTo(ent.p1.x + centerX, ent.p1.y + centerY);
+        ctx.lineTo(ent.p2.x + centerX, ent.p2.y + centerY);
+    }
+    ctx.stroke();
+}
+
+function drawDimension(dim) {
+    ctx.font = '10px monospace';
+    ctx.fillStyle = '#00ff41';
     
-    // Cerrar panel de cotas si clicamos fuera
-    document.getElementById('dim-panel').style.display = 'none';
+    if (dim.type === 'LINEAR') {
+        const mx = (dim.p1.x + dim.p2.x) / 2 + centerX;
+        const my = (dim.p1.y + dim.p2.y) / 2 + centerY;
+        ctx.fillText(dim.value.toFixed(1), mx + dim.offX, my + dim.offY);
+        // Línea de referencia
+        ctx.beginPath();
+        ctx.strokeStyle = 'rgba(0,255,65,0.3)';
+        ctx.moveTo(dim.p1.x + centerX, dim.p1.y + centerY);
+        ctx.lineTo(mx + dim.offX, my + dim.offY);
+        ctx.stroke();
+    }
+}
 
-    if (mode === 'DIM' && hit && hit.item.data.type === 'line') {
-        showDimEditor(hit.item, event.point);
+// --- SNAPPING Y MOUSE ---
+function getSnap(x, y) {
+    let worldX = x - centerX;
+    let worldY = y - centerY;
+    const threshold = 15;
+
+    // Snap al Origen
+    if (Math.abs(worldX) < threshold && Math.abs(worldY) < threshold) return { x: 0, y: 0 };
+    // Snap a Ejes
+    if (Math.abs(worldX) < threshold) worldX = 0;
+    if (Math.abs(worldY) < threshold) worldY = 0;
+    // Snap a puntos existentes
+    for (let p of points) {
+        let d = Math.hypot(worldX - p.x, worldY - p.y);
+        if (d < threshold) return { x: p.x, y: p.y };
+    }
+    return { x: worldX, y: worldY };
+}
+
+canvas.addEventListener('mousedown', e => {
+    const snap = getSnap(e.clientX - 220, e.clientY);
+    
+    if (mode === 'DIM') {
+        // Detectar si tocamos una entidad para acotar
+        entities.forEach(ent => {
+            if (distToSegment(snap, ent.p1, ent.p2) < 10) {
+                showEditor(ent, e.clientX, e.clientY);
+            }
+        });
         return;
     }
 
-    if (hit && (mode === 'SELECT' || !mode)) {
-        if(hit.item.data.isDim) {
-            selectedDim = hit.item.data.ref;
-            return;
+    isDragging = true;
+    startPoint = snap;
+});
+
+canvas.addEventListener('mousemove', e => {
+    const rawX = e.clientX - 220;
+    const rawY = e.clientY;
+    currentMouse = getSnap(rawX, rawY);
+    document.getElementById('coord-display').innerText = `X: ${Math.round(currentMouse.x)} Y: ${Math.round(currentMouse.y)}`;
+});
+
+window.addEventListener('mouseup', e => {
+    if (isDragging && startPoint) {
+        if (mode === 'LINE') {
+            const endPoint = currentMouse;
+            if (Math.hypot(endPoint.x - startPoint.x, endPoint.y - startPoint.y) > 5) {
+                const newPoint1 = addPoint(startPoint.x, startPoint.y);
+                const newPoint2 = addPoint(endPoint.x, endPoint.y);
+                entities.push({ type: 'LINE', p1: newPoint1, p2: newPoint2, selected: false });
+            }
         }
     }
+    isDragging = false;
+    startPoint = null;
+});
 
-    const startPt = getSnapPoint(event.point);
-    
-    if (mode === 'LINE') {
-        activeEntity = new Path.Line(startPt, startPt);
-        activeEntity.strokeColor = varColor('--blue');
-        activeEntity.strokeWidth = 2;
-        activeEntity.data.type = 'line';
-        entities.push(activeEntity);
-    } else if (mode === 'RECT') {
-        activeEntity = new Path.Rectangle(startPt, new paper.Size(1,1));
-        activeEntity.strokeColor = varColor('--blue');
-        activeEntity.strokeWidth = 2;
-        activeEntity.data.type = 'rect';
-        entities.push(activeEntity);
-    }
-};
-
-tool.onMouseDrag = (event) => {
-    if(activeEntity) {
-        const snapped = getSnapPoint(event.point);
-        if(mode === 'LINE') {
-            activeEntity.segments[1].point = snapped;
-        } else if(mode === 'RECT') {
-            activeEntity.remove();
-            activeEntity = new Path.Rectangle(activeEntity.bounds.topLeft, snapped);
-            activeEntity.strokeColor = varColor('--blue');
-            activeEntity.strokeWidth = 2;
-            activeEntity.data.type = 'rect';
-        }
-    }
-};
-
-tool.onMouseUp = () => {
-    activeEntity = null;
-    updateSketch();
-};
-
-// --- EDITOR DE COTAS ---
-function showDimEditor(line, clickPt) {
-    const panel = document.getElementById('dim-panel');
-    const input = document.getElementById('dim-input');
-    
-    panel.style.display = 'block';
-    panel.style.left = clickPt.x + 15 + 'px';
-    panel.style.top = clickPt.y + 'px';
-    
-    const dist = line.segments[0].point.getDistance(line.segments[1].point);
-    input.value = Math.round(dist);
-    input.focus();
-    input.select();
-
-    input.onchange = () => {
-        const val = parseFloat(input.value);
-        addDimension(line, val);
-        panel.style.display = 'none';
-    };
+// --- FUNCIONES DE AYUDA ---
+function addPoint(x, y) {
+    let existing = points.find(p => p.x === x && p.y === y);
+    if (existing) return existing;
+    let newP = { x, y };
+    points.push(newP);
+    return newP;
 }
 
-function addDimension(line, val) {
-    // Eliminar si ya existe
-    solver.constraints = solver.constraints.filter(c => c.id !== line.id);
-    dimensions = dimensions.filter(d => d.lineId !== line.id);
-
-    const c = { id: line.id, type: 'DIST', p1: line.segments[0].point, p2: line.segments[1].point, val: val };
-    solver.constraints.push(c);
-    
-    // Crear visual de cota
-    const labelGroup = new Group();
-    const mid = line.segments[0].point.add(line.segments[1].point).divide(2);
-    const text = new TextItem({
-        point: mid.add([0, -15]),
-        content: val,
-        fillColor: varColor('--accent'),
-        fontSize: 12,
-        justification: 'center',
-        data: { isDim: true, ref: line.id }
-    });
-    
-    labelGroup.addChild(text);
-    dimensions.push({ lineId: line.id, textObj: text, constraint: c });
-    
-    updateSketch();
-}
-
-function addRelation(type) {
-    paper.project.selectedItems.forEach(item => {
-        if(item.data.type === 'line') {
-            solver.constraints.push({ type: type, p1: item.segments[0].point, p2: item.segments[1].point });
-        }
-        if(type === 'FIX') {
-            item.segments.forEach(s => solver.constraints.push({ type: 'FIX', p: s.point, x: s.point.x, y: s.point.y }));
-        }
-    });
-    updateSketch();
-}
-
-function updateSketch() {
-    solver.solve();
-    
-    let dof = 0;
-    entities.forEach(ent => {
-        let isFixed = false;
-        // Si toca el origen, está "Ground"
-        ent.segments.forEach(s => {
-            if(s.point.getDistance(origin) < 1) isFixed = true;
-        });
-
-        const hasConst = solver.constraints.some(c => 
-            (c.p1 && ent.segments.some(s => s.point === c.p1)) || (c.p === ent.segments[0].point)
-        );
-
-        ent.strokeColor = (isFixed || hasConst) ? varColor('--accent') : varColor('--blue');
-        if(!isFixed && !hasConst) dof += 2;
-    });
-
-    // Actualizar textos de cotas
-    dimensions.forEach(d => {
-        const line = entities.find(e => e.id === d.lineId);
-        if(line) {
-            const mid = line.segments[0].point.add(line.segments[1].point).divide(2);
-            d.textObj.point = mid.add([0, -15]);
-        }
-    });
-
-    document.getElementById('dof-count').innerText = dof;
-    paper.view.draw();
+function distToSegment(p, v, w) {
+    const l2 = Math.hypot(v.x - w.x, v.y - w.y) ** 2;
+    if (l2 === 0) return Math.hypot(p.x - v.x, p.y - v.y);
+    let t = ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2;
+    t = Math.max(0, Math.min(1, t));
+    return Math.hypot(p.x - (v.x + t * (w.x - v.x)), p.y - (v.y + t * (w.y - v.y)));
 }
 
 function setMode(m) {
     mode = m;
     document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
-    document.getElementById('tool-' + m.toLowerCase())?.classList.add('active');
+    event.target.classList.add('active');
+    dimEditor.style.display = 'none';
 }
 
-// Shortcuts
-window.onkeydown = (e) => {
-    if(e.key === 'Delete') {
-        paper.project.selectedItems.forEach(i => i.remove());
-        updateSketch();
-    }
+function showEditor(ent, x, y) {
+    selectedEntity = ent;
+    dimEditor.style.display = 'block';
+    dimEditor.style.left = x + 'px';
+    dimEditor.style.top = y + 'px';
+    
+    const currentLen = Math.hypot(ent.p1.x - ent.p2.x, ent.p1.y - ent.p2.y);
+    dimInput.value = Math.round(currentLen);
+    dimInput.focus();
+    dimInput.select();
+}
+
+dimInput.onchange = () => {
+    if (!selectedEntity) return;
+    const newLen = parseFloat(dimInput.value);
+    const oldLen = Math.hypot(selectedEntity.p1.x - selectedEntity.p2.x, selectedEntity.p1.y - selectedEntity.p2.y);
+    const ratio = newLen / oldLen;
+    
+    // Ajustar punto 2 manteniendo ángulo
+    selectedEntity.p2.x = selectedEntity.p1.x + (selectedEntity.p2.x - selectedEntity.p1.x) * ratio;
+    selectedEntity.p2.y = selectedEntity.p1.y + (selectedEntity.p2.y - selectedEntity.p1.y) * ratio;
+    
+    // Crear la cota visual
+    dimensions = dimensions.filter(d => d.parent !== selectedEntity);
+    dimensions.push({
+        type: 'LINEAR',
+        p1: selectedEntity.p1,
+        p2: selectedEntity.p2,
+        value: newLen,
+        offX: 20, offY: -20,
+        parent: selectedEntity
+    });
+    
+    dimEditor.style.display = 'none';
 };
+
+// --- COTAS ANGULARES (LOGICA BASICA) ---
+// Para implementar el arco angular, se requiere detectar dos líneas.
+// Aquí se deja la estructura para que al estar en modo ANGLE y seleccionar dos líneas,
+// se calcule el Math.atan2 entre sus vectores.
+
 </script>
 </body>
 </html>
