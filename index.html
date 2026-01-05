@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mini CAD 2D Pro - Geometrías y Restricciones</title>
+    <title>Mini CAD 2D Pro - Full Features</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Playfair+Display:wght@700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@700&display=swap');
 
         :root {
-            --bg: #F8F9FA;
+            --bg: #F0F2F5;
             --white: #FFFFFF;
             --black: #1A1A1A;
             --gray: #6C757D;
@@ -17,12 +17,13 @@
             --axis: #DEE2E6;
             --dim-color: #007BFF;
             --dim-conflict: #FF4136;
+            --radius: 10px;
         }
 
         body {
             margin: 0;
             font-family: 'Inter', sans-serif;
-            background-color: var(--white);
+            background-color: var(--bg);
             color: var(--black);
             display: flex;
             flex-direction: column;
@@ -31,41 +32,45 @@
         }
 
         header {
-            padding: 10px;
+            padding: 12px;
             text-align: center;
             background: var(--white);
             border-bottom: 1px solid var(--axis);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
         }
 
-        h1 { font-family: 'Playfair Display', serif; margin: 0; font-size: 16px; }
+        h1 { font-family: 'Playfair Display', serif; margin: 0; font-size: 18px; letter-spacing: -0.5px; }
 
         .toolbar {
             display: flex;
             justify-content: center;
-            gap: 6px;
-            padding: 10px;
-            background: var(--bg);
+            gap: 8px;
+            padding: 12px;
+            background: var(--white);
             border-bottom: 1px solid var(--axis);
             flex-wrap: wrap;
         }
 
         .btn {
-            padding: 6px 12px;
-            border-radius: 6px;
-            border: 1px solid #CED4DA;
+            padding: 8px 16px;
+            border-radius: var(--radius);
+            border: 1px solid #E0E0E0;
             background: var(--white);
-            font-weight: 600;
+            font-weight: 500;
             cursor: pointer;
-            transition: all 0.2s ease;
-            font-size: 11px;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 13px;
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: 6px;
+            user-select: none;
         }
 
-        .btn:hover { background: #E9ECEF; }
-        .btn.active { background: var(--black); color: var(--white); border-color: var(--black); }
-        .divider { width: 1px; background: var(--axis); margin: 0 4px; }
+        .btn:hover { background: #F8F9FA; border-color: #CCC; transform: translateY(-1px); }
+        .btn:active { transform: translateY(0); }
+        .btn.active { background: var(--black); color: var(--white); border-color: var(--black); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        
+        .divider { width: 1px; background: var(--axis); margin: 0 8px; height: 30px; align-self: center; }
 
         #viewport-container {
             flex-grow: 1;
@@ -73,40 +78,52 @@
             background-color: #FFFFFF;
             cursor: crosshair;
             overflow: hidden;
+            touch-action: none;
         }
 
-        svg { width: 100%; height: 100%; display: block; }
+        svg { width: 100%; height: 100%; display: block; outline: none; }
 
         /* Estilos de Entidades */
-        .axis { stroke: var(--axis); stroke-width: 1; pointer-events: none; }
-        .origin-point { fill: var(--origin); r: 4; stroke: white; stroke-width: 2; }
-        .point { fill: var(--white); stroke: var(--black); stroke-width: 1.5; cursor: pointer; transition: r 0.2s; }
-        .point:hover { r: 6; }
-        .point.selected { fill: var(--accent); stroke: var(--accent); r: 5; }
-        .segment { stroke: var(--black); stroke-width: 2; fill: none; cursor: pointer; }
-        .circle-entity { stroke: var(--black); stroke-width: 2; fill: none; cursor: pointer; }
+        .axis { stroke: var(--axis); stroke-width: 1.5; pointer-events: none; }
+        .origin-point { fill: var(--origin); r: 5; stroke: white; stroke-width: 2; }
+        .point { fill: var(--white); stroke: var(--black); stroke-width: 2; cursor: pointer; transition: r 0.15s; }
+        .point:hover { r: 7; }
+        .point.selected { fill: var(--accent); stroke: var(--white); r: 6; }
+        .segment { stroke: var(--black); stroke-width: 2.5; fill: none; cursor: pointer; stroke-linecap: round; }
+        .circle-entity { stroke: var(--black); stroke-width: 2.5; fill: none; cursor: pointer; }
         
-        /* Estilos de Cotas */
+        /* Cotas */
         .dim-group { cursor: pointer; }
-        .dim-line { stroke: var(--dim-color); stroke-width: 1; opacity: 0.4; pointer-events: none; }
-        .dim-text { font-size: 10px; font-weight: 700; fill: var(--dim-color); user-select: none; }
-        .dim-text-bg { fill: white; opacity: 0.9; }
-        .conflict .dim-text { fill: var(--dim-conflict); }
-        .conflict line { stroke: var(--dim-conflict); }
+        .dim-line { stroke: var(--dim-color); stroke-width: 1; opacity: 0.5; pointer-events: none; }
+        .dim-text { font-size: 11px; font-weight: 600; fill: var(--dim-color); user-select: none; font-family: 'Inter', sans-serif; }
+        .dim-text-bg { fill: white; opacity: 0.9; rx: 4; ry: 4; }
 
         #dim-modal {
             position: absolute;
             display: none;
             background: white;
-            padding: 8px;
-            border-radius: 6px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            padding: 12px;
+            border-radius: var(--radius);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
             border: 1px solid var(--axis);
             z-index: 1000;
         }
-        #dim-modal input { width: 60px; padding: 4px; border: 1px solid #DDD; border-radius: 4px; }
+        #dim-modal input { width: 80px; padding: 6px; border: 1px solid #DDD; border-radius: 6px; outline: none; }
+        #dim-modal input:focus { border-color: var(--accent); }
 
-        .ghost { stroke: var(--black); stroke-width: 1; stroke-dasharray: 4; opacity: 0.4; fill: none; pointer-events: none; }
+        .ghost { stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 6, 4; opacity: 0.5; fill: none; pointer-events: none; }
+        
+        .instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(255,255,255,0.8);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 11px;
+            color: var(--gray);
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
@@ -119,20 +136,22 @@
     <button class="btn" id="btn-circle" onclick="setMode('CIRCLE')"><span>&#9675;</span> Círculo</button>
     <div class="divider"></div>
     <button class="btn" id="btn-select" onclick="setMode('SELECT')"><span>&#10148;</span> Select</button>
-    <button class="btn" id="btn-dim_dist" onclick="setMode('DIM_DIST')"><span>&#8616;</span> Cota Dist</button>
+    <button class="btn" id="btn-dim" onclick="setMode('DIM')"><span>&#8616;</span> Cota</button>
     <button class="btn" id="btn-trim" onclick="setMode('TRIM')"><span>&#9986;</span> Cortar</button>
     <div class="divider"></div>
     <button class="btn" onclick="undo()"><span>&#8630;</span> Deshacer</button>
     <button class="btn" onclick="redo()"><span>&#8631;</span> Rehacer</button>
     <div class="divider"></div>
-    <button class="btn" onclick="applyConstraintAction('HORIZ')">H</button>
-    <button class="btn" onclick="applyConstraintAction('VERT')">V</button>
-    <button class="btn" onclick="applyConstraintAction('COINCIDENT')">Coincidir</button>
-    <button class="btn" style="color:red" onclick="clearCanvas()">Limpiar</button>
+    <button class="btn" onclick="applyConstraint('HORIZ')">H</button>
+    <button class="btn" onclick="applyConstraint('VERT')">V</button>
+    <button class="btn" onclick="applyConstraint('COINCIDENT')">Mover a Coincidencia</button>
+    <div class="divider"></div>
+    <button class="btn" style="color:var(--origin)" onclick="clearCanvas()">Limpiar</button>
 </div>
 
 <div id="viewport-container">
     <div id="dim-modal"><input type="number" id="dim-input" step="any"></div>
+    <div class="instructions">Scroll: Zoom | Click Derecho: Pan | Click: Dibujar</div>
     <svg id="canvas">
         <g id="main-transform">
             <g id="grid-layer"></g>
@@ -147,7 +166,7 @@
 </div>
 
 <script>
-    // --- Modelado de Datos ---
+    // --- Modelado ---
     class Point {
         constructor(x, y, isOrigin = false) {
             this.x = x; this.y = y;
@@ -176,58 +195,44 @@
     class Constraint {
         constructor(type, targets, value = null, subType = 'ALIGNED') {
             this.type = type; // DIST, HORIZ, VERT, COINCIDENT
-            this.targets = targets; // IDs
+            this.targets = targets; 
             this.value = value;
-            this.subType = subType; // ALIGNED, HORIZONTAL, VERTICAL
+            this.subType = subType;
             this.id = Math.random().toString(36).substr(2, 9);
-            this.offsetX = 0; this.offsetY = 0;
-            this.isConflicting = false;
+            this.offsetX = 40; this.offsetY = 40;
         }
     }
 
-    // --- Estado Global ---
+    // --- Estado ---
     let points = [];
     let segments = [];
     let circles = [];
     let constraints = [];
     let undoStack = [], redoStack = [];
-    let scale = 1.0, panX = 0, panY = 0;
     
+    let scale = 1.0, panX = 0, panY = 0;
     const originPoint = new Point(0, 0, true);
     let mode = 'LINE';
     let activePoint = null;
-    let dragTarget = null, dimDragTarget = null;
-    let selectedIds = [], selectionBuffer = [];
+    let dragTarget = null, dimDragTarget = null, panning = false;
+    let selectedIds = [];
     
     const canvas = document.getElementById('canvas');
     const mainTransform = document.getElementById('main-transform');
     const entitiesLayer = document.getElementById('entities-layer');
-    const gridLayer = document.getElementById('grid-layer');
     const uiLayer = document.getElementById('ui-layer');
     const dimModal = document.getElementById('dim-modal');
     const dimInput = document.getElementById('dim-input');
 
-    // --- Gestión de Historia ---
+    // --- Historia ---
     function saveState() {
         const state = JSON.stringify({ points, segments, circles, constraints });
         undoStack.push(state);
+        if(undoStack.length > 50) undoStack.shift();
         redoStack = [];
     }
-
-    function undo() {
-        if (undoStack.length > 0) {
-            redoStack.push(JSON.stringify({ points, segments, circles, constraints }));
-            loadState(undoStack.pop());
-        }
-    }
-
-    function redo() {
-        if (redoStack.length > 0) {
-            undoStack.push(JSON.stringify({ points, segments, circles, constraints }));
-            loadState(redoStack.pop());
-        }
-    }
-
+    function undo() { if (undoStack.length > 0) { redoStack.push(JSON.stringify({ points, segments, circles, constraints })); loadState(undoStack.pop()); } }
+    function redo() { if (redoStack.length > 0) { undoStack.push(JSON.stringify({ points, segments, circles, constraints })); loadState(redoStack.pop()); } }
     function loadState(json) {
         const d = JSON.parse(json);
         points = d.points.map(p => Object.assign(new Point(p.x, p.y, p.isOrigin), p));
@@ -244,23 +249,23 @@
         render();
     }
 
-    // --- Solver (Motor de Restricciones) ---
+    // --- Solver ---
     function solve() {
-        const iterations = 80;
-        const damping = 0.4;
+        const iterations = 100;
+        const damping = 0.5;
         for (let i = 0; i < iterations; i++) {
             constraints.forEach(c => {
                 if (c.type === 'DIST') {
                     const s = segments.find(seg => seg.id === c.targets[0]);
                     if (s) applyDist(s.p1, s.p2, c, damping);
                     const circ = circles.find(ci => ci.id === c.targets[0]);
-                    if (circ) circ.radius = c.value / 2; // Cota de diámetro
+                    if (circ) circ.radius = c.value / 2;
                 } else if (c.type === 'HORIZ' || c.type === 'VERT') {
                     const s = segments.find(seg => seg.id === c.targets[0]);
                     if (s) applyOrient(s, c.type, damping);
                 } else if (c.type === 'COINCIDENT') {
-                    const p1 = points.find(p => p.id === c.targets[0]) || originPoint;
-                    const p2 = points.find(p => p.id === c.targets[1]) || originPoint;
+                    const p1 = points.find(p => p.id === c.targets[0]) || (c.targets[0] === 'ORIGIN' ? originPoint : null);
+                    const p2 = points.find(p => p.id === c.targets[1]) || (c.targets[1] === 'ORIGIN' ? originPoint : null);
                     if (p1 && p2) {
                         const mx = (p1.x + p2.x)/2, my = (p1.y + p2.y)/2;
                         if(!p1.isOrigin) { p1.x += (mx - p1.x)*damping; p1.y += (my - p1.y)*damping; }
@@ -274,9 +279,9 @@
 
     function applyDist(p1, p2, c, dmp) {
         const dx = p2.x - p1.x, dy = p2.y - p1.y;
-        const dist = Math.hypot(dx, dy);
+        const dist = Math.hypot(dx, dy) || 1;
         if (c.subType === 'ALIGNED') {
-            const diff = (dist - c.value) / (dist || 1) * 0.5 * dmp;
+            const diff = (dist - c.value) / dist * 0.5 * dmp;
             if(!p1.isOrigin) { p1.x += dx * diff; p1.y += dy * diff; }
             if(!p2.isOrigin) { p2.x -= dx * diff; p2.y -= dy * diff; }
         } else if (c.subType === 'HORIZONTAL') {
@@ -302,18 +307,22 @@
         }
     }
 
-    // --- Interacción Mouse ---
+    // --- Herramientas de Dibujo ---
     function getCoords(e) {
         const r = canvas.getBoundingClientRect();
-        return { x: (e.clientX - r.left - panX - r.width/2)/scale, y: (e.clientY - r.top - panY - r.height/2)/scale };
+        return { x: (e.clientX - r.left - r.width/2 - panX)/scale, y: (e.clientY - r.top - r.height/2 - panY)/scale };
     }
 
     function findSnap(coords) {
-        const p = points.concat(originPoint).find(p => Math.hypot(p.x - coords.x, p.y - coords.y) < 15/scale);
+        const snapRadius = 15 / scale;
+        const allPoints = points.concat(originPoint);
+        const p = allPoints.find(p => Math.hypot(p.x - coords.x, p.y - coords.y) < snapRadius);
         return p || coords;
     }
 
+    // --- Eventos ---
     canvas.onmousedown = (e) => {
+        if (e.button === 2) { panning = true; return; }
         const coords = getCoords(e);
         const snap = findSnap(coords);
         dimModal.style.display = 'none';
@@ -324,80 +333,89 @@
             if (!(snap instanceof Point)) points.push(p);
             if (!activePoint) activePoint = p;
             else {
-                if(activePoint !== p) segments.push(new Segment(activePoint, p));
+                if(activePoint.id !== p.id) segments.push(new Segment(activePoint, p));
                 activePoint = p;
             }
         } else if (mode === 'RECT') {
             saveState();
-            const pStart = (snap instanceof Point) ? snap : new Point(snap.x, snap.y);
-            if (!(snap instanceof Point)) points.push(pStart);
-            activePoint = pStart;
+            const p = (snap instanceof Point) ? snap : new Point(snap.x, snap.y);
+            if (!(snap instanceof Point)) points.push(p);
+            activePoint = p;
         } else if (mode === 'CIRCLE') {
             saveState();
-            const center = (snap instanceof Point) ? snap : new Point(snap.x, snap.y);
-            if (!(snap instanceof Point)) points.push(center);
-            activePoint = center;
-        } else if (mode === 'DIM_DIST') {
+            const p = (snap instanceof Point) ? snap : new Point(snap.x, snap.y);
+            if (!(snap instanceof Point)) points.push(p);
+            activePoint = p;
+        } else if (mode === 'DIM') {
             const target = findSegmentAt(coords) || findCircleAt(coords);
             if (target) {
-                const c = new Constraint('DIST', [target.id], target.type === 'CIRCLE' ? target.radius*2 : target.length());
-                c.isPlacing = true;
+                saveState();
+                const initialVal = target.type === 'CIRCLE' ? target.radius * 2 : target.length();
+                const c = new Constraint('DIST', [target.id], initialVal);
                 constraints.push(c);
                 dimDragTarget = c;
             }
         } else if (mode === 'SELECT') {
             const dim = findDimAt(e);
             if (dim) { dimDragTarget = dim; return; }
-            if (snap instanceof Point) { dragTarget = snap; selectedIds = [snap.id]; }
-            else { selectedIds = []; }
+            if (snap instanceof Point) { 
+                dragTarget = snap; 
+                if(!e.shiftKey) selectedIds = [snap.id];
+                else selectedIds.push(snap.id);
+            } else {
+                selectedIds = [];
+            }
         } else if (mode === 'TRIM') {
-            saveState();
-            const s = findSegmentAt(coords); if (s) segments = segments.filter(x => x.id !== s.id);
-            const c = findCircleAt(coords); if (c) circles = circles.filter(x => x.id !== c.id);
-            solve();
+            const s = findSegmentAt(coords);
+            if (s) { saveState(); segments = segments.filter(x => x.id !== s.id); }
+            const ci = findCircleAt(coords);
+            if (ci) { saveState(); circles = circles.filter(x => x.id !== ci.id); }
         }
         render();
     };
 
     canvas.onmousemove = (e) => {
+        if (panning) { panX += e.movementX; panY += e.movementY; render(); return; }
         const coords = getCoords(e);
         const snap = findSnap(coords);
 
         if (activePoint) {
             if (mode === 'LINE') {
                 const gl = document.getElementById('ghost-line');
-                gl.style.display = 'block'; gl.setAttribute('x1', activePoint.x); gl.setAttribute('y1', activePoint.y);
+                gl.style.display = 'block';
+                gl.setAttribute('x1', activePoint.x); gl.setAttribute('y1', activePoint.y);
                 gl.setAttribute('x2', snap.x); gl.setAttribute('y2', snap.y);
             } else if (mode === 'RECT') {
                 const gr = document.getElementById('ghost-rect');
                 gr.style.display = 'block';
-                gr.setAttribute('x', Math.min(activePoint.x, snap.x)); gr.setAttribute('y', Math.min(activePoint.y, snap.y));
-                gr.setAttribute('width', Math.abs(snap.x - activePoint.x)); gr.setAttribute('height', Math.abs(snap.y - activePoint.y));
+                gr.setAttribute('x', Math.min(activePoint.x, snap.x));
+                gr.setAttribute('y', Math.min(activePoint.y, snap.y));
+                gr.setAttribute('width', Math.abs(snap.x - activePoint.x));
+                gr.setAttribute('height', Math.abs(snap.y - activePoint.y));
             } else if (mode === 'CIRCLE') {
                 const gc = document.getElementById('ghost-circle');
-                gc.style.display = 'block'; gc.setAttribute('cx', activePoint.x); gc.setAttribute('cy', activePoint.y);
+                gc.style.display = 'block';
+                gc.setAttribute('cx', activePoint.x); gc.setAttribute('cy', activePoint.y);
                 gc.setAttribute('r', Math.hypot(snap.x - activePoint.x, snap.y - activePoint.y));
             }
         }
 
-        if (dimDragTarget && mode === 'DIM_DIST') {
-            const target = dimDragTarget;
-            const s = segments.find(seg => seg.id === target.targets[0]);
-            const circ = circles.find(ci => ci.id === target.targets[0]);
-
+        if (dimDragTarget) {
+            const targetId = dimDragTarget.targets[0];
+            const s = segments.find(seg => seg.id === targetId);
+            const ci = circles.find(c => c.id === targetId);
             if (s) {
                 const midX = (s.p1.x + s.p2.x)/2, midY = (s.p1.y + s.p2.y)/2;
-                const dx = Math.abs(coords.x - midX), dy = Math.abs(coords.y - midY);
-                if (dx > dy * 2 && dx > 30) { target.subType = 'VERTICAL'; target.offsetX = coords.x - midX; target.offsetY = 0; }
-                else if (dy > dx * 2 && dy > 30) { target.subType = 'HORIZONTAL'; target.offsetY = coords.y - midY; target.offsetX = 0; }
-                else {
-                    target.subType = 'ALIGNED';
-                    const angle = Math.atan2(s.p2.y - s.p1.y, s.p2.x - s.p1.x) + Math.PI/2;
-                    const d = (coords.x - midX)*Math.cos(angle) + (coords.y - midY)*Math.sin(angle);
-                    target.offsetX = d * Math.cos(angle); target.offsetY = d * Math.sin(angle);
-                }
-            } else if (circ) {
-                target.offsetX = coords.x - circ.center.x; target.offsetY = coords.y - circ.center.y;
+                dimDragTarget.offsetX = coords.x - midX;
+                dimDragTarget.offsetY = coords.y - midY;
+                // Lógica de alineación
+                const dx = Math.abs(dimDragTarget.offsetX), dy = Math.abs(dimDragTarget.offsetY);
+                if (dx > dy * 2) { dimDragTarget.subType = 'VERTICAL'; dimDragTarget.offsetY = 0; }
+                else if (dy > dx * 2) { dimDragTarget.subType = 'HORIZONTAL'; dimDragTarget.offsetX = 0; }
+                else { dimDragTarget.subType = 'ALIGNED'; }
+            } else if (ci) {
+                dimDragTarget.offsetX = coords.x - ci.center.x;
+                dimDragTarget.offsetY = coords.y - ci.center.y;
             }
             render();
         }
@@ -406,15 +424,16 @@
     };
 
     window.onmouseup = (e) => {
+        if (e.button === 2) { panning = false; return; }
         const coords = getCoords(e);
         const snap = findSnap(coords);
 
         if (activePoint) {
             if (mode === 'RECT') {
-                const p2 = (snap instanceof Point) ? snap : new Point(snap.x, activePoint.y);
+                const p2 = new Point(snap.x, activePoint.y);
                 const p3 = (snap instanceof Point) ? snap : new Point(snap.x, snap.y);
-                const p4 = (snap instanceof Point) ? snap : new Point(activePoint.x, snap.y);
-                if (!(snap instanceof Point)) points.push(p2, p3, p4);
+                const p4 = new Point(activePoint.x, snap.y);
+                points.push(p2, p3, p4);
                 segments.push(new Segment(activePoint, p2), new Segment(p2, p3), new Segment(p3, p4), new Segment(p4, activePoint));
                 activePoint = null;
             } else if (mode === 'CIRCLE') {
@@ -423,14 +442,26 @@
                 activePoint = null;
             }
         }
-        
+
         document.querySelectorAll('.ghost').forEach(g => g.style.display = 'none');
         dimDragTarget = null; dragTarget = null;
+        render();
     };
 
+    canvas.onwheel = (e) => {
+        e.preventDefault();
+        const zoomSpeed = 0.001;
+        const delta = -e.deltaY;
+        const oldScale = scale;
+        scale *= (1 + delta * zoomSpeed);
+        scale = Math.min(Math.max(0.1, scale), 20);
+        render();
+    };
+
+    canvas.oncontextmenu = (e) => e.preventDefault();
     canvas.ondblclick = () => { activePoint = null; render(); };
 
-    // --- Auxiliares ---
+    // --- Helpers Selección ---
     function findSegmentAt(c) { return segments.find(s => distToSeg(c, s.p1, s.p2) < 10/scale); }
     function findCircleAt(c) { return circles.find(ci => Math.abs(Math.hypot(c.x - ci.center.x, c.y - ci.center.y) - ci.radius) < 10/scale); }
     function findDimAt(e) { const g = e.target.closest('.dim-group'); return g ? constraints.find(c => c.id === g.dataset.id) : null; }
@@ -445,19 +476,21 @@
     function setMode(m) {
         mode = m; activePoint = null;
         document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
-        const activeBtn = document.getElementById('btn-' + m.toLowerCase());
-        if(activeBtn) activeBtn.classList.add('active');
+        const btn = document.getElementById('btn-' + m.toLowerCase());
+        if(btn) btn.classList.add('active');
     }
 
-    function applyConstraintAction(type) {
-        saveState();
+    function applyConstraint(type) {
         if (type === 'COINCIDENT' && selectedIds.length === 2) {
+            saveState();
             constraints.push(new Constraint('COINCIDENT', [...selectedIds]));
+            solve();
         } else if (segments.length > 0) {
-            const last = segments[segments.length-1];
+            saveState();
+            const last = segments[segments.length - 1];
             constraints.push(new Constraint(type, [last.id]));
+            solve();
         }
-        solve();
     }
 
     function openDimModal(e, c) {
@@ -473,66 +506,69 @@
 
     function render() {
         const r = canvas.getBoundingClientRect();
-        mainTransform.setAttribute("transform", `translate(${panX + r.width/2}, ${panY + r.height/2}) scale(${scale})`);
+        mainTransform.setAttribute("transform", `translate(${r.width/2 + panX}, ${r.height/2 + panY}) scale(${scale})`);
+        
+        // Ejes
         gridLayer.innerHTML = `<line x1="-5000" y1="0" x2="5000" y2="0" class="axis" /><line x1="0" y1="-5000" x2="0" y2="5000" class="axis" /><circle cx="0" cy="0" class="origin-point" />`;
         entitiesLayer.innerHTML = ''; uiLayer.innerHTML = '';
 
         segments.forEach(s => {
-            const l = document.createElementNS("http://www.w3.org/2000/svg", "line");
-            l.setAttribute("x1", s.p1.x); l.setAttribute("y1", s.p1.y); l.setAttribute("x2", s.p2.x); l.setAttribute("y2", s.p2.y);
-            l.setAttribute("class", "segment");
-            entitiesLayer.appendChild(l);
+            const el = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            el.setAttribute("x1", s.p1.x); el.setAttribute("y1", s.p1.y); el.setAttribute("x2", s.p2.x); el.setAttribute("y2", s.p2.y);
+            el.setAttribute("class", "segment");
+            entitiesLayer.appendChild(el);
         });
 
         circles.forEach(ci => {
-            const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-            c.setAttribute("cx", ci.center.x); c.setAttribute("cy", ci.center.y); c.setAttribute("r", ci.radius);
-            c.setAttribute("class", "circle-entity");
-            entitiesLayer.appendChild(c);
+            const el = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            el.setAttribute("cx", ci.center.x); el.setAttribute("cy", ci.center.y); el.setAttribute("r", ci.radius);
+            el.setAttribute("class", "circle-entity");
+            entitiesLayer.appendChild(el);
         });
 
         constraints.forEach(c => {
             if (c.type !== 'DIST') return;
             const s = segments.find(seg => seg.id === c.targets[0]);
-            const circ = circles.find(ci => ci.id === c.targets[0]);
+            const ci = circles.find(circ => circ.id === c.targets[0]);
             const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
             g.setAttribute("class", "dim-group"); g.dataset.id = c.id;
-            g.ondblclick = (e) => openDimModal(e, c);
+            g.onclick = (e) => openDimModal(e, c);
 
-            let tx, ty;
+            let tx, ty, lineMarkup = '';
             if (s) {
-                const p1 = s.p1, p2 = s.p2;
+                const {p1, p2} = s;
                 const midX = (p1.x + p2.x)/2, midY = (p1.y + p2.y)/2;
                 tx = midX + c.offsetX; ty = midY + c.offsetY;
                 if (c.subType === 'ALIGNED') {
-                    g.innerHTML = `<line x1="${p1.x}" y1="${p1.y}" x2="${p1.x+c.offsetX}" y2="${p1.y+c.offsetY}" class="dim-line" />
-                                   <line x1="${p2.x}" y1="${p2.y}" x2="${p2.x+c.offsetX}" y2="${p2.y+c.offsetY}" class="dim-line" />
-                                   <line x1="${p1.x+c.offsetX}" y1="${p1.y+c.offsetY}" x2="${p2.x+c.offsetX}" y2="${p2.y+c.offsetY}" stroke="var(--dim-color)" />`;
+                    lineMarkup = `<line x1="${p1.x}" y1="${p1.y}" x2="${p1.x+c.offsetX}" y2="${p1.y+c.offsetY}" class="dim-line" />
+                                  <line x1="${p2.x}" y1="${p2.y}" x2="${p2.x+c.offsetX}" y2="${p2.y+c.offsetY}" class="dim-line" />
+                                  <line x1="${p1.x+c.offsetX}" y1="${p1.y+c.offsetY}" x2="${p2.x+c.offsetX}" y2="${p2.y+c.offsetY}" stroke="var(--dim-color)" stroke-width="1.5" />`;
                 } else if (c.subType === 'HORIZONTAL') {
-                    g.innerHTML = `<line x1="${p1.x}" y1="${p1.y}" x2="${p1.x}" y2="${ty}" class="dim-line" />
-                                   <line x1="${p2.x}" y1="${p2.y}" x2="${p2.x}" y2="${ty}" class="dim-line" />
-                                   <line x1="${p1.x}" y1="${ty}" x2="${p2.x}" y2="${ty}" stroke="var(--dim-color)" />`;
+                    lineMarkup = `<line x1="${p1.x}" y1="${p1.y}" x2="${p1.x}" y2="${ty}" class="dim-line" />
+                                  <line x1="${p2.x}" y1="${p2.y}" x2="${p2.x}" y2="${ty}" class="dim-line" />
+                                  <line x1="${p1.x}" y1="${ty}" x2="${p2.x}" y2="${ty}" stroke="var(--dim-color)" stroke-width="1.5" />`;
                 } else {
-                    g.innerHTML = `<line x1="${p1.x}" y1="${p1.y}" x2="${tx}" y2="${p1.y}" class="dim-line" />
-                                   <line x1="${p2.x}" y1="${p2.y}" x2="${tx}" y2="${p2.y}" class="dim-line" />
-                                   <line x1="${tx}" y1="${p1.y}" x2="${tx}" y2="${p2.y}" stroke="var(--dim-color)" />`;
+                    lineMarkup = `<line x1="${p1.x}" y1="${p1.y}" x2="${tx}" y2="${p1.y}" class="dim-line" />
+                                  <line x1="${p2.x}" y1="${p2.y}" x2="${tx}" y2="${p2.y}" class="dim-line" />
+                                  <line x1="${tx}" y1="${p1.y}" x2="${tx}" y2="${p2.y}" stroke="var(--dim-color)" stroke-width="1.5" />`;
                 }
-            } else if (circ) {
-                tx = circ.center.x + c.offsetX; ty = circ.center.y + c.offsetY;
-                g.innerHTML = `<line x1="${circ.center.x}" y1="${circ.center.y}" x2="${tx}" y2="${ty}" stroke="var(--dim-color)" stroke-dasharray="2" />`;
+            } else if (ci) {
+                tx = ci.center.x + c.offsetX; ty = ci.center.y + c.offsetY;
+                lineMarkup = `<line x1="${ci.center.x}" y1="${ci.center.y}" x2="${tx}" y2="${ty}" class="dim-line" stroke-dasharray="2" />`;
             }
 
-            g.innerHTML += `<rect x="${tx-15/scale}" y="${ty-8/scale}" width="${30/scale}" height="${16/scale}" class="dim-text-bg" />
-                            <text x="${tx}" y="${ty+4/scale}" class="dim-text" text-anchor="middle" style="font-size:${10/scale}px">${Math.round(c.value)}</text>`;
+            g.innerHTML = `${lineMarkup}
+                <rect x="${tx-20/scale}" y="${ty-10/scale}" width="${40/scale}" height="${20/scale}" class="dim-text-bg" />
+                <text x="${tx}" y="${ty + 4/scale}" class="dim-text" text-anchor="middle" style="font-size: ${12/scale}px">${Math.round(c.value)}</text>`;
             uiLayer.appendChild(g);
         });
 
         points.forEach(p => {
             if (p.isOrigin) return;
-            const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-            c.setAttribute("cx", p.x); c.setAttribute("cy", p.y); c.setAttribute("r", 4/scale);
-            c.setAttribute("class", "point " + (selectedIds.includes(p.id) ? "selected" : ""));
-            entitiesLayer.appendChild(c);
+            const el = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            el.setAttribute("cx", p.x); el.setAttribute("cy", p.y); el.setAttribute("r", 5/scale);
+            el.setAttribute("class", "point " + (selectedIds.includes(p.id) ? "selected" : ""));
+            entitiesLayer.appendChild(el);
         });
     }
 
