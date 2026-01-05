@@ -1,178 +1,314 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<title>Mini Solid Sketcher</title>
-<style>
-body{margin:0;font-family:sans-serif;background:#eee}
-#bar{padding:6px;background:#333;color:#fff;font-size:13px}
-#tools{padding:6px;background:#ddd;display:flex;gap:6px}
-button{padding:5px 8px}
-svg{background:#fff;width:100vw;height:calc(100vh - 70px)}
-.line{stroke:#222;stroke-width:2}
-.point{fill:#007bff}
-.axis{stroke:#aaa;stroke-width:1;stroke-dasharray:4}
-.dimText{fill:#d00;font-size:11px;font-weight:bold;cursor:pointer}
-.arc{stroke:#d00;fill:none;stroke-width:1.5}
-</style>
+    <meta charset="UTF-8">
+    <title>RaizCuadra CAD - Pro Sketcher</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paper.js/0.12.15/paper-full.min.js"></script>
+    <style>
+        :root {
+            --bg: #0d0d0d; --panel: #1a1a1a; --accent: #00ff41; /* Estética RaizCuadra */
+            --blue: #3b82f6; --black: #e0e0e0; --red: #ff4d4d;
+        }
+        body { margin: 0; background: var(--bg); color: white; font-family: 'Courier New', monospace; display: flex; height: 100vh; overflow: hidden; }
+        
+        /* Sidebar Estética RaizCuadra */
+        #sidebar { width: 280px; background: var(--panel); border-right: 1px solid #333; display: flex; flex-direction: column; padding: 15px; }
+        .tool-group { margin-bottom: 20px; }
+        .tool-group h3 { font-size: 12px; color: var(--accent); text-transform: uppercase; border-bottom: 1px solid #333; padding-bottom: 5px; }
+        .btn { width: 100%; background: transparent; border: 1px solid #444; color: #aaa; padding: 8px; margin: 4px 0; cursor: pointer; text-align: left; font-size: 11px; transition: 0.2s; }
+        .btn:hover { border-color: var(--accent); color: white; }
+        .btn.active { background: #333; border-color: var(--accent); color: var(--accent); }
+        
+        #viewport { flex-grow: 1; position: relative; cursor: crosshair; }
+        canvas { width: 100%; height: 100%; background: radial-gradient(#222 1px, transparent 1px); background-size: 30px 30px; }
+        
+        /* Editor Flotante */
+        #dim-editor { position: absolute; display: none; background: var(--panel); border: 1px solid var(--accent); padding: 5px; box-shadow: 0 0 10px rgba(0,255,65,0.2); }
+        #dim-editor input { background: black; border: 1px solid #444; color: var(--accent); width: 60px; text-align: center; outline: none; }
+        
+        .status-bar { position: absolute; bottom: 0; left: 280px; right: 0; background: rgba(0,0,0,0.8); padding: 5px 15px; font-size: 10px; display: flex; gap: 20px; border-top: 1px solid #333; }
+        .status-blue { color: var(--blue); } .status-black { color: var(--accent); } .status-red { color: var(--red); }
+    </style>
 </head>
 <body>
 
-<div id="bar">MINI SOLID SKETCHER — DIST + ANGLE</div>
-<div id="tools">
-<button onclick="setMode('LINE')">Linea</button>
-<button onclick="setMode('RECT')">Rect</button>
-<button onclick="setMode('CIRCLE')">Circulo</button>
-<button onclick="setMode('DIM')">Cota</button>
-<button onclick="setMode('ANGLE')">Angulo</button>
-<button onclick="undo()">Undo</button>
-<button onclick="redo()">Redo</button>
+<div id="sidebar">
+    <div style="font-size: 18px; font-weight: bold; margin-bottom: 20px; color: var(--accent);">[RAIZ_CUADRA] CAD</div>
+    
+    <div class="tool-group">
+        <h3>Entidades</h3>
+        <button class="btn active" id="tool-line" onclick="setMode('LINE')">> LINEA</button>
+        <button class="btn" id="tool-circle" onclick="setMode('CIRCLE')">> CIRCULO</button>
+        <button class="btn" id="tool-rect" onclick="setMode('RECT')">> RECTANGULO</button>
+        <button class="btn" id="tool-arc" onclick="setMode('ARC')">> ARCO</button>
+        <button class="btn" id="tool-trim" onclick="setMode('TRIM')">> RECORTAR (TRIM)</button>
+    </div>
+
+    <div class="tool-group">
+        <h3>Relaciones</h3>
+        <button class="btn" onclick="addRelation('HORIZ')">> HORIZONTAL</button>
+        <button class="btn" onclick="addRelation('VERT')">> VERTICAL</button>
+        <button class="btn" onclick="addRelation('FIX')">> FIJAR (GROUND)</button>
+        <button class="btn" onclick="addRelation('COINC')">> COINCIDENTE</button>
+        <button class="btn" onclick="addRelation('EQUAL')">> IGUALDAD</button>
+    </div>
+
+    <div class="tool-group">
+        <h3>Dimensiones</h3>
+        <button class="btn" onclick="setMode('DIM')">> COTA INTELIGENTE</button>
+    </div>
+
+    <div id="constraint-info" style="font-size: 10px; color: #666; margin-top: auto;">
+        DOF: <span id="dof-count">0</span> | ESTADO: <span id="sketch-state">LISTO</span>
+    </div>
 </div>
 
-<svg id="svg"></svg>
+<div id="viewport">
+    <canvas id="cadCanvas" resize></canvas>
+    <div id="dim-editor"><input type="number" id="dim-input"></div>
+    <div class="status-bar">
+        <span class="status-blue">● SUBDEFINIDO</span>
+        <span class="status-black">● TOTALMENTE DEFINIDO</span>
+        <span class="status-red">● SOBREDEFINIDO</span>
+    </div>
+</div>
 
 <script>
-/* ===================== CORE STATE ===================== */
-let state={pts:[],segs:[],cir:[],cons:[]}
-let hist=[],redoS=[]
-let mode='LINE',tmp=[]
-const EPS=1e-6
-const svg=document.getElementById('svg')
+// --- CONFIGURACIÓN PAPER.JS ---
+paper.setup('cadCanvas');
+const { Path, Point, Group, Color, TextItem } = paper;
 
-/* ===================== HELPERS ===================== */
-const id=()=>Math.random().toString(36).slice(2)
-const P=id=>state.pts.find(p=>p.id===id)
-const dist=(a,b)=>Math.hypot(b.x-a.x,b.y-a.y)
+// --- MOTOR DE RESTRICCIONES (GCS) ---
+class ConstraintSolver {
+    constructor() {
+        this.points = []; // Referencias a objetos Point de Paper.js
+        this.constraints = [];
+        this.iterations = 100;
+        this.epsilon = 0.001;
+    }
 
-function save(){hist.push(JSON.parse(JSON.stringify(state)));redoS=[]}
-function undo(){if(hist.length){redoS.push(state);state=hist.pop();draw()}}
-function redo(){if(redoS.length){hist.push(state);state=redoS.pop();draw()}}
+    solve() {
+        for (let i = 0; i < this.iterations; i++) {
+            let maxError = 0;
+            this.constraints.forEach(c => {
+                maxError = Math.max(maxError, this.apply(c));
+            });
+            if (maxError < this.epsilon) break;
+        }
+    }
 
-function normAngleVis(deg){
-deg=((deg%360)+360)%360
-return deg>180?360-deg:deg
-}
-
-/* ===================== SOLVER ===================== */
-function solve(){
-for(let i=0;i<40;i++){
-let err=0
-for(const c of state.cons){
-if(c.type==='DIST'){
-const s=state.segs.find(s=>s.id===c.sid); if(!s)continue
-const a=P(s.a),b=P(s.b)
-let d=dist(a,b); if(d<EPS)continue
-let diff=(d-c.v)/d*0.5
-diff=Math.max(-10,Math.min(10,diff))
-a.x+= (b.x-a.x)*diff
-a.y+= (b.y-a.y)*diff
-b.x-= (b.x-a.x)*diff
-b.y-= (b.y-a.y)*diff
-err=Math.max(err,Math.abs(d-c.v))
-}
-if(c.type==='ANGLE'){
-const s1=state.segs.find(s=>s.id===c.s1)
-const s2=state.segs.find(s=>s.id===c.s2)
-if(!s1||!s2)continue
-const vId=[s1.a,s1.b].find(x=>x===s2.a||x===s2.b)
-if(!vId)continue
-const v=P(vId)
-const p1=P(s1.a===vId?s1.b:s1.a)
-const p2=P(s2.a===vId?s2.b:s2.a)
-let a1=Math.atan2(p1.y-v.y,p1.x-v.x)
-let a2=Math.atan2(p2.y-v.y,p2.x-v.x)
-let diff=(c.v*Math.PI/180)-(a2-a1)
-diff=Math.max(-0.5,Math.min(0.5,diff))
-const cs=Math.cos(diff),sn=Math.sin(diff)
-const x=p2.x-v.x,y=p2.y-v.y
-p2.x=v.x+x*cs-y*sn
-p2.y=v.y+x*sn+y*cs
-err=Math.max(err,Math.abs(diff))
-}
-}
-if(err<EPS)break
-}
+    apply(c) {
+        switch(c.type) {
+            case 'FIX':
+                c.p1.x = c.valX; c.p1.y = c.valY;
+                return 0;
+            case 'HORIZ':
+                let avgY = (c.p1.y + c.p2.y) / 2;
+                let errH = Math.abs(c.p1.y - c.p2.y);
+                if(!c.p1.fixed) c.p1.y = avgY;
+                if(!c.p2.fixed) c.p2.y = avgY;
+                return errH;
+            case 'VERT':
+                let avgX = (c.p1.x + c.p2.x) / 2;
+                let errV = Math.abs(c.p1.x - c.p2.x);
+                if(!c.p1.fixed) c.p1.x = avgX;
+                if(!c.p2.fixed) c.p2.x = avgX;
+                return errV;
+            case 'DIST':
+                let dx = c.p2.x - c.p1.x, dy = c.p2.y - c.p1.y;
+                let d = Math.sqrt(dx*dx + dy*dy);
+                if (d === 0) return 0;
+                let diff = (d - c.value) / d * 0.5;
+                if(!c.p1.fixed) { c.p1.x += dx * diff; c.p1.y += dy * diff; }
+                if(!c.p2.fixed) { c.p2.x -= dx * diff; c.p2.y -= dy * diff; }
+                return Math.abs(d - c.value);
+            case 'COINC':
+                let mx = (c.p1.x + c.p2.x)/2, my = (c.p1.y + c.p2.y)/2;
+                c.p1.x = mx; c.p1.y = my; c.p2.x = mx; c.p2.y = my;
+                return 0;
+        }
+        return 0;
+    }
 }
 
-/* ===================== DRAW ===================== */
-function draw(){
-svg.innerHTML=''
-const w=svg.clientWidth,h=svg.clientHeight
-const ox=w/2,oy=h/2
+const solver = new ConstraintSolver();
 
-// axes
-let ax=document.createElementNS(svg.namespaceURI,'line')
-ax.setAttribute('x1',0);ax.setAttribute('y1',oy)
-ax.setAttribute('x2',w);ax.setAttribute('y2',oy)
-ax.setAttribute('class','axis');svg.appendChild(ax)
-let ay=document.createElementNS(svg.namespaceURI,'line')
-ay.setAttribute('x1',ox);ay.setAttribute('y1',0)
-ay.setAttribute('x2',ox);ay.setAttribute('y2',h)
-ay.setAttribute('class','axis');svg.appendChild(ay)
+// --- ESTADO GLOBAL ---
+let mode = 'LINE';
+let entities = [];
+let selectedEntities = [];
+let tempPath = null;
+const origin = new Point(window.innerWidth/2 - 140, window.innerHeight/2);
 
-// segments
-for(const s of state.segs){
-const a=P(s.a),b=P(s.b)
-let l=document.createElementNS(svg.namespaceURI,'line')
-l.setAttribute('x1',a.x+ox);l.setAttribute('y1',oy-a.y)
-l.setAttribute('x2',b.x+ox);l.setAttribute('y2',oy-b.y)
-l.setAttribute('class','line');svg.appendChild(l)
-}
+// --- DIBUJO DEL ORIGEN ---
+const drawOrigin = () => {
+    new Path.Circle({ center: origin, radius: 5, strokeColor: '#00ff41', strokeWidth: 1 });
+    new Path.Line(origin.add([-10,0]), origin.add([10,0])).strokeColor = '#444';
+    new Path.Line(origin.add([0,-10]), origin.add([0,10])).strokeColor = '#444';
+};
+drawOrigin();
 
-// points
-for(const p of state.pts){
-let c=document.createElementNS(svg.namespaceURI,'circle')
-c.setAttribute('cx',p.x+ox);c.setAttribute('cy',oy-p.y)
-c.setAttribute('r',4);c.setAttribute('class','point')
-svg.appendChild(c)
+// --- GESTIÓN DE HERRAMIENTAS ---
+function setMode(m) {
+    mode = m;
+    document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tool-' + m.toLowerCase())?.classList.add('active');
 }
 
-// dimensions
-for(const c of state.cons){
-if(c.type==='DIST'){
-const s=state.segs.find(s=>s.id===c.sid)
-const a=P(s.a),b=P(s.b)
-let tx=(a.x+b.x)/2,ty=(a.y+b.y)/2
-let t=document.createElementNS(svg.namespaceURI,'text')
-t.textContent=Math.round(c.v)
-t.setAttribute('x',tx+ox+5);t.setAttribute('y',oy-ty-5)
-t.setAttribute('class','dimText')
-svg.appendChild(t)
-}
-if(c.type==='ANGLE'){
-const s1=state.segs.find(s=>s.id===c.s1)
-const s2=state.segs.find(s=>s.id===c.s2)
-const vId=[s1.a,s1.b].find(x=>x===s2.a||x===s2.b)
-const v=P(vId)
-let t=document.createElementNS(svg.namespaceURI,'text')
-t.textContent=Math.round(normAngleVis(c.v))+'°'
-t.setAttribute('x',v.x+ox+15);t.setAttribute('y',oy-v.y-15)
-t.setAttribute('class','dimText')
-svg.appendChild(t)
-}
-}
+const tool = new paper.Tool();
+
+tool.onMouseDown = (event) => {
+    const hit = paper.project.hitTest(event.point, { segments: true, stroke: true, tolerance: 10 });
+    
+    if (mode === 'SELECT' || mode === 'DIM') {
+        if (hit) {
+            if (mode === 'DIM' && hit.item.data.type === 'segment') {
+                createDimension(hit.item);
+            } else {
+                hit.item.selected = !hit.item.selected;
+            }
+        }
+        return;
+    }
+
+    if (mode === 'LINE') {
+        tempPath = new Path.Line(event.point, event.point);
+        tempPath.strokeColor = '#3b82f6';
+        tempPath.strokeWidth = 2;
+        tempPath.data.type = 'segment';
+    }
+    
+    if (mode === 'CIRCLE') {
+        tempPath = new Path.Circle(event.point, 1);
+        tempPath.strokeColor = '#3b82f6';
+        tempPath.data.type = 'circle';
+    }
+};
+
+tool.onMouseDrag = (event) => {
+    if (tempPath && mode === 'LINE') {
+        tempPath.segments[1].point = event.point;
+    }
+    if (tempPath && mode === 'CIRCLE') {
+        tempPath.scale(event.point.getDistance(tempPath.position) / (tempPath.bounds.width/2));
+    }
+};
+
+tool.onMouseUp = (event) => {
+    if (tempPath) {
+        entities.push(tempPath);
+        // Al soltar, calculamos grados de libertad y definimos color inicial
+        updateSketchState();
+        tempPath = null;
+    }
+};
+
+// --- LÓGICA DE DIMENSIONADO ---
+function createDimension(path) {
+    const p1 = path.segments[0].point;
+    const p2 = path.segments[1].point;
+    const dist = p1.getDistance(p2);
+    
+    const dimVal = prompt("Valor de cota:", dist.toFixed(2));
+    if (dimVal) {
+        solver.constraints.push({
+            type: 'DIST',
+            p1: p1,
+            p2: p2,
+            value: parseFloat(dimVal)
+        });
+        
+        // Agregar referencia visual de cota
+        const label = new TextItem({
+            point: p1.add(p2).divide(2).add([0, -15]),
+            content: dimVal,
+            fillColor: '#00ff41',
+            fontSize: 12,
+            fontFamily: 'Courier New'
+        });
+        
+        solveAndRender();
+    }
 }
 
-/* ===================== INTERACTION ===================== */
-function setMode(m){mode=m;tmp=[]}
-
-svg.onmousedown=e=>{
-const r=svg.getBoundingClientRect()
-const x=e.clientX-r.left-svg.clientWidth/2
-const y=svg.clientHeight/2-(e.clientY-r.top)
-if(mode==='LINE'){
-const p={x,y,id:id()}
-state.pts.push(p)
-if(tmp[0]){
-save()
-state.segs.push({a:tmp[0],b:p.id,id:id()})
-tmp=[]
-}else tmp=[p.id]
-}
-draw()
+// --- ACTUALIZACIÓN DEL SOLVER Y RENDER ---
+function solveAndRender() {
+    solver.solve();
+    updateSketchState();
+    paper.view.draw();
 }
 
-draw()
+function updateSketchState() {
+    // Lógica simplificada de definición de colores
+    entities.forEach(entity => {
+        let isFixed = false;
+        // Si el punto está cerca del origen, lo fijamos automáticamente (Coincidente Origen)
+        entity.segments?.forEach(seg => {
+            if(seg.point.getDistance(origin) < 5) {
+                seg.point.x = origin.x; seg.point.y = origin.y;
+                seg.point.fixed = true;
+                isFixed = true;
+            }
+        });
+
+        // Contar restricciones asociadas a esta entidad
+        const relevantConstraints = solver.constraints.filter(c => 
+            (c.p1 && entity.segments.some(s => s.point === c.p1)) || 
+            (c.p2 && entity.segments.some(s => s.point === c.p2))
+        );
+
+        if (relevantConstraints.length >= 2 || isFixed) {
+            entity.strokeColor = '#00ff41'; // Totalmente definido (Negro/Verde RaizCuadra)
+        } else {
+            entity.strokeColor = '#3b82f6'; // Subdefinido
+        }
+    });
+}
+
+function addRelation(type) {
+    const selected = paper.project.selectedItems;
+    if (selected.length === 0) return;
+
+    selected.forEach(item => {
+        if (type === 'HORIZ' && item.data.type === 'segment') {
+            solver.constraints.push({ type: 'HORIZ', p1: item.segments[0].point, p2: item.segments[1].point });
+        }
+        if (type === 'VERT' && item.data.type === 'segment') {
+            solver.constraints.push({ type: 'VERT', p1: item.segments[0].point, p2: item.segments[1].point });
+        }
+        if (type === 'FIX') {
+            item.segments.forEach(s => {
+                solver.constraints.push({ type: 'FIX', p1: s.point, valX: s.point.x, valY: s.point.y });
+                s.point.fixed = true;
+            });
+        }
+    });
+    
+    solveAndRender();
+}
+
+// --- TOOL: TRIM (RECORTAR) ---
+function trimEntity(point) {
+    const hit = paper.project.hitTest(point, { stroke: true, tolerance: 5 });
+    if (hit && hit.item) {
+        hit.item.remove();
+        entities = entities.filter(e => e !== hit.item);
+        // Limpiar restricciones huérfanas
+        solver.constraints = solver.constraints.filter(c => 
+            entities.some(e => e.segments.some(s => s.point === c.p1 || s.point === c.p2))
+        );
+        solveAndRender();
+    }
+}
+
+// Escuchar teclas para borrar
+window.onkeydown = (e) => {
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+        paper.project.selectedItems.forEach(item => item.remove());
+        solveAndRender();
+    }
+};
+
 </script>
 </body>
 </html>
