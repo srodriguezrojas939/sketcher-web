@@ -3,21 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mini CAD 2D - Sketcher Matemático</title>
+    <title>Mini CAD 2D Pro - Geometrías y Restricciones</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Open+Sans:wght@400;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Playfair+Display:wght@700&display=swap');
 
         :root {
-            --bg: #F2F2F2;
+            --bg: #F8F9FA;
             --white: #FFFFFF;
-            --black: #000000;
-            --gray: #666;
-            --accent: #2196F3;
+            --black: #1A1A1A;
+            --gray: #6C757D;
+            --accent: #007BFF;
+            --origin: #DC3545;
+            --axis: #DEE2E6;
+            --dim-color: #007BFF;
+            --dim-conflict: #FF4136;
         }
 
         body {
             margin: 0;
-            font-family: 'Open Sans', sans-serif;
+            font-family: 'Inter', sans-serif;
             background-color: var(--white);
             color: var(--black);
             display: flex;
@@ -26,299 +30,513 @@
             overflow: hidden;
         }
 
-        /* UI Estética anterior */
         header {
-            padding: 20px;
+            padding: 10px;
             text-align: center;
-            background: var(--bg);
-            border-bottom: 1px solid #ddd;
+            background: var(--white);
+            border-bottom: 1px solid var(--axis);
         }
 
-        h1 { font-family: 'Playfair Display', serif; margin: 0; font-size: 28px; }
-        p.subtitle { font-family: 'Playfair Display', serif; font-weight: 700; margin: 5px 0 0; font-size: 14px; }
+        h1 { font-family: 'Playfair Display', serif; margin: 0; font-size: 16px; }
 
         .toolbar {
             display: flex;
             justify-content: center;
-            gap: 10px;
-            padding: 15px;
-            background: var(--white);
-            border-bottom: 1px solid #eee;
+            gap: 6px;
+            padding: 10px;
+            background: var(--bg);
+            border-bottom: 1px solid var(--axis);
             flex-wrap: wrap;
         }
 
         .btn {
-            padding: 10px 20px;
-            border-radius: 50px;
-            border: 1px solid #ddd;
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: 1px solid #CED4DA;
             background: var(--white);
             font-weight: 600;
             cursor: pointer;
-            transition: 0.3s;
-            font-size: 13px;
+            transition: all 0.2s ease;
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
         }
 
-        .btn:hover { background: var(--bg); transform: translateY(-1px); }
+        .btn:hover { background: #E9ECEF; }
         .btn.active { background: var(--black); color: var(--white); border-color: var(--black); }
+        .divider { width: 1px; background: var(--axis); margin: 0 4px; }
 
-        /* Área de Dibujo */
         #viewport-container {
             flex-grow: 1;
             position: relative;
-            background-image: radial-gradient(#ddd 1px, transparent 1px);
-            background-size: 20px 20px;
+            background-color: #FFFFFF;
             cursor: crosshair;
+            overflow: hidden;
         }
 
-        svg {
-            width: 100%;
-            height: 100%;
-            display: block;
-        }
+        svg { width: 100%; height: 100%; display: block; }
 
-        .point { fill: var(--white); stroke: var(--black); stroke-width: 2; cursor: move; }
-        .point:hover { fill: var(--black); }
-        .segment { stroke: var(--black); stroke-width: 2; fill: none; }
-        .dimension-text { font-size: 12px; font-weight: 600; fill: var(--gray); cursor: pointer; user-select: none; }
-        .dimension-text:hover { fill: var(--black); text-decoration: underline; }
+        /* Estilos de Entidades */
+        .axis { stroke: var(--axis); stroke-width: 1; pointer-events: none; }
+        .origin-point { fill: var(--origin); r: 4; stroke: white; stroke-width: 2; }
+        .point { fill: var(--white); stroke: var(--black); stroke-width: 1.5; cursor: pointer; transition: r 0.2s; }
+        .point:hover { r: 6; }
+        .point.selected { fill: var(--accent); stroke: var(--accent); r: 5; }
+        .segment { stroke: var(--black); stroke-width: 2; fill: none; cursor: pointer; }
+        .circle-entity { stroke: var(--black); stroke-width: 2; fill: none; cursor: pointer; }
         
-        .snap-guide { fill: rgba(33, 150, 243, 0.3); stroke: var(--accent); stroke-dasharray: 2; }
+        /* Estilos de Cotas */
+        .dim-group { cursor: pointer; }
+        .dim-line { stroke: var(--dim-color); stroke-width: 1; opacity: 0.4; pointer-events: none; }
+        .dim-text { font-size: 10px; font-weight: 700; fill: var(--dim-color); user-select: none; }
+        .dim-text-bg { fill: white; opacity: 0.9; }
+        .conflict .dim-text { fill: var(--dim-conflict); }
+        .conflict line { stroke: var(--dim-conflict); }
 
-        .info-panel {
+        #dim-modal {
             position: absolute;
-            bottom: 20px;
-            right: 20px;
-            background: rgba(255,255,255,0.9);
-            padding: 15px;
-            border-radius: 15px;
-            border: 1px solid #ddd;
-            font-size: 12px;
-            max-width: 200px;
+            display: none;
+            background: white;
+            padding: 8px;
+            border-radius: 6px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            border: 1px solid var(--axis);
+            z-index: 1000;
         }
+        #dim-modal input { width: 60px; padding: 4px; border: 1px solid #DDD; border-radius: 4px; }
+
+        .ghost { stroke: var(--black); stroke-width: 1; stroke-dasharray: 4; opacity: 0.4; fill: none; pointer-events: none; }
     </style>
 </head>
 <body>
 
-<header>
-    <h1>Mini CAD 2D</h1>
-    <p class="subtitle">Geometría Computacional</p>
-</header>
+<header><h1>Mini CAD 2D Pro</h1></header>
 
 <div class="toolbar">
-    <button class="btn active" id="btn-line" onclick="setMode('LINE')">Dibujar Línea</button>
-    <button class="btn" id="btn-select" onclick="setMode('SELECT')">Mover / Editar</button>
-    <button class="btn" onclick="clearCanvas()">Limpiar</button>
-    <div style="border-left: 1px solid #ddd; margin: 0 10px;"></div>
-    <button class="btn" onclick="applyConstraint('HORIZ')">Horizontal</button>
-    <button class="btn" onclick="applyConstraint('VERT')">Vertical</button>
+    <button class="btn active" id="btn-line" onclick="setMode('LINE')"><span>&#9998;</span> Línea</button>
+    <button class="btn" id="btn-rect" onclick="setMode('RECT')"><span>&#9645;</span> Rect</button>
+    <button class="btn" id="btn-circle" onclick="setMode('CIRCLE')"><span>&#9675;</span> Círculo</button>
+    <div class="divider"></div>
+    <button class="btn" id="btn-select" onclick="setMode('SELECT')"><span>&#10148;</span> Select</button>
+    <button class="btn" id="btn-dim_dist" onclick="setMode('DIM_DIST')"><span>&#8616;</span> Cota Dist</button>
+    <button class="btn" id="btn-trim" onclick="setMode('TRIM')"><span>&#9986;</span> Cortar</button>
+    <div class="divider"></div>
+    <button class="btn" onclick="undo()"><span>&#8630;</span> Deshacer</button>
+    <button class="btn" onclick="redo()"><span>&#8631;</span> Rehacer</button>
+    <div class="divider"></div>
+    <button class="btn" onclick="applyConstraintAction('HORIZ')">H</button>
+    <button class="btn" onclick="applyConstraintAction('VERT')">V</button>
+    <button class="btn" onclick="applyConstraintAction('COINCIDENT')">Coincidir</button>
+    <button class="btn" style="color:red" onclick="clearCanvas()">Limpiar</button>
 </div>
 
 <div id="viewport-container">
+    <div id="dim-modal"><input type="number" id="dim-input" step="any"></div>
     <svg id="canvas">
-        </svg>
-    <div class="info-panel">
-        <strong>Guía:</strong><br>
-        1. Clic para puntos.<br>
-        2. Cierra polígonos haciendo clic en puntos existentes (Snap).<br>
-        3. Haz clic en los números para cambiar dimensiones.
-    </div>
+        <g id="main-transform">
+            <g id="grid-layer"></g>
+            <g id="entities-layer"></g>
+            <g id="ui-layer">
+                <line id="ghost-line" class="ghost" style="display:none"></line>
+                <rect id="ghost-rect" class="ghost" style="display:none"></rect>
+                <circle id="ghost-circle" class="ghost" style="display:none"></circle>
+            </g>
+        </g>
+    </svg>
 </div>
 
 <script>
-    // --- GEOMETRÍA ---
+    // --- Modelado de Datos ---
     class Point {
-        constructor(x, y) {
-            this.x = x;
-            this.y = y;
-            this.id = Math.random().toString(36).substr(2, 9);
+        constructor(x, y, isOrigin = false) {
+            this.x = x; this.y = y;
+            this.id = isOrigin ? 'ORIGIN' : Math.random().toString(36).substr(2, 9);
+            this.isOrigin = isOrigin;
         }
     }
 
     class Segment {
         constructor(p1, p2) {
-            this.p1 = p1;
-            this.p2 = p2;
+            this.p1 = p1; this.p2 = p2;
             this.id = Math.random().toString(36).substr(2, 9);
+            this.type = 'SEGMENT';
         }
-        length() {
-            return Math.sqrt(Math.pow(this.p2.x - this.p1.x, 2) + Math.pow(this.p2.y - this.p1.y, 2));
+        length() { return Math.hypot(this.p2.x - this.p1.x, this.p2.y - this.p1.y); }
+    }
+
+    class Circle {
+        constructor(center, radius) {
+            this.center = center; this.radius = radius;
+            this.id = Math.random().toString(36).substr(2, 9);
+            this.type = 'CIRCLE';
         }
     }
 
     class Constraint {
-        constructor(type, targets, value = null) {
-            this.type = type; // 'DIST', 'HORIZ', 'VERT', 'ANGLE'
-            this.targets = targets; // IDs de segmentos o puntos
+        constructor(type, targets, value = null, subType = 'ALIGNED') {
+            this.type = type; // DIST, HORIZ, VERT, COINCIDENT
+            this.targets = targets; // IDs
             this.value = value;
+            this.subType = subType; // ALIGNED, HORIZONTAL, VERTICAL
+            this.id = Math.random().toString(36).substr(2, 9);
+            this.offsetX = 0; this.offsetY = 0;
+            this.isConflicting = false;
         }
     }
 
-    // --- ESTADO ---
+    // --- Estado Global ---
     let points = [];
     let segments = [];
+    let circles = [];
     let constraints = [];
-    let mode = 'LINE'; // 'LINE', 'SELECT'
+    let undoStack = [], redoStack = [];
+    let scale = 1.0, panX = 0, panY = 0;
+    
+    const originPoint = new Point(0, 0, true);
+    let mode = 'LINE';
     let activePoint = null;
-    let dragTarget = null;
-    const SNAP_DIST = 15;
+    let dragTarget = null, dimDragTarget = null;
+    let selectedIds = [], selectionBuffer = [];
+    
+    const canvas = document.getElementById('canvas');
+    const mainTransform = document.getElementById('main-transform');
+    const entitiesLayer = document.getElementById('entities-layer');
+    const gridLayer = document.getElementById('grid-layer');
+    const uiLayer = document.getElementById('ui-layer');
+    const dimModal = document.getElementById('dim-modal');
+    const dimInput = document.getElementById('dim-input');
 
-    const svg = document.getElementById('canvas');
+    // --- Gestión de Historia ---
+    function saveState() {
+        const state = JSON.stringify({ points, segments, circles, constraints });
+        undoStack.push(state);
+        redoStack = [];
+    }
 
-    // --- SOLVER SIMPLE (RELAJACIÓN) ---
+    function undo() {
+        if (undoStack.length > 0) {
+            redoStack.push(JSON.stringify({ points, segments, circles, constraints }));
+            loadState(undoStack.pop());
+        }
+    }
+
+    function redo() {
+        if (redoStack.length > 0) {
+            undoStack.push(JSON.stringify({ points, segments, circles, constraints }));
+            loadState(redoStack.pop());
+        }
+    }
+
+    function loadState(json) {
+        const d = JSON.parse(json);
+        points = d.points.map(p => Object.assign(new Point(p.x, p.y, p.isOrigin), p));
+        const findP = (id) => id === 'ORIGIN' ? originPoint : points.find(p => p.id === id);
+        segments = d.segments.map(s => {
+            const ns = new Segment(findP(s.p1.id), findP(s.p2.id));
+            ns.id = s.id; return ns;
+        });
+        circles = d.circles.map(c => {
+            const nc = new Circle(findP(c.center.id), c.radius);
+            nc.id = c.id; return nc;
+        });
+        constraints = d.constraints;
+        render();
+    }
+
+    // --- Solver (Motor de Restricciones) ---
     function solve() {
-        const iterations = 20;
+        const iterations = 80;
+        const damping = 0.4;
         for (let i = 0; i < iterations; i++) {
             constraints.forEach(c => {
                 if (c.type === 'DIST') {
-                    const seg = segments.find(s => s.id === c.targets[0]);
-                    if (!seg) return;
-                    const dx = seg.p2.x - seg.p1.x;
-                    const dy = seg.p2.y - seg.p1.y;
-                    const dist = Math.sqrt(dx*dx + dy*dy);
-                    if (dist === 0) return;
-                    const diff = (dist - c.value) / dist * 0.5;
-                    const offsetX = dx * diff;
-                    const offsetY = dy * diff;
-                    
-                    // Solo movemos si no es el punto que el usuario está arrastrando
-                    if (seg.p1 !== dragTarget) { seg.p1.x += offsetX; seg.p1.y += offsetY; }
-                    if (seg.p2 !== dragTarget) { seg.p2.x -= offsetX; seg.p2.y -= offsetY; }
-                }
-                if (c.type === 'HORIZ') {
-                    const seg = segments.find(s => s.id === c.targets[0]);
-                    if (!seg) return;
-                    const midY = (seg.p1.y + seg.p2.y) / 2;
-                    if (seg.p1 !== dragTarget) seg.p1.y = midY;
-                    if (seg.p2 !== dragTarget) seg.p2.y = midY;
-                }
-                if (c.type === 'VERT') {
-                    const seg = segments.find(s => s.id === c.targets[0]);
-                    if (!seg) return;
-                    const midX = (seg.p1.x + seg.p2.x) / 2;
-                    if (seg.p1 !== dragTarget) seg.p1.x = midX;
-                    if (seg.p2 !== dragTarget) seg.p2.x = midX;
+                    const s = segments.find(seg => seg.id === c.targets[0]);
+                    if (s) applyDist(s.p1, s.p2, c, damping);
+                    const circ = circles.find(ci => ci.id === c.targets[0]);
+                    if (circ) circ.radius = c.value / 2; // Cota de diámetro
+                } else if (c.type === 'HORIZ' || c.type === 'VERT') {
+                    const s = segments.find(seg => seg.id === c.targets[0]);
+                    if (s) applyOrient(s, c.type, damping);
+                } else if (c.type === 'COINCIDENT') {
+                    const p1 = points.find(p => p.id === c.targets[0]) || originPoint;
+                    const p2 = points.find(p => p.id === c.targets[1]) || originPoint;
+                    if (p1 && p2) {
+                        const mx = (p1.x + p2.x)/2, my = (p1.y + p2.y)/2;
+                        if(!p1.isOrigin) { p1.x += (mx - p1.x)*damping; p1.y += (my - p1.y)*damping; }
+                        if(!p2.isOrigin) { p2.x += (mx - p2.x)*damping; p2.y += (my - p2.y)*damping; }
+                    }
                 }
             });
         }
         render();
     }
 
-    // --- INTERACCIÓN ---
+    function applyDist(p1, p2, c, dmp) {
+        const dx = p2.x - p1.x, dy = p2.y - p1.y;
+        const dist = Math.hypot(dx, dy);
+        if (c.subType === 'ALIGNED') {
+            const diff = (dist - c.value) / (dist || 1) * 0.5 * dmp;
+            if(!p1.isOrigin) { p1.x += dx * diff; p1.y += dy * diff; }
+            if(!p2.isOrigin) { p2.x -= dx * diff; p2.y -= dy * diff; }
+        } else if (c.subType === 'HORIZONTAL') {
+            const diff = (Math.abs(dx) - c.value) * (dx > 0 ? 1 : -1) * 0.5 * dmp;
+            if(!p1.isOrigin) p1.x -= diff;
+            if(!p2.isOrigin) p2.x += diff;
+        } else if (c.subType === 'VERTICAL') {
+            const diff = (Math.abs(dy) - c.value) * (dy > 0 ? 1 : -1) * 0.5 * dmp;
+            if(!p1.isOrigin) p1.y -= diff;
+            if(!p2.isOrigin) p2.y += diff;
+        }
+    }
+
+    function applyOrient(s, type, dmp) {
+        if (type === 'HORIZ') {
+            const err = (s.p2.y - s.p1.y) * 0.5 * dmp;
+            if(!s.p1.isOrigin) s.p1.y += err;
+            if(!s.p2.isOrigin) s.p2.y -= err;
+        } else {
+            const err = (s.p2.x - s.p1.x) * 0.5 * dmp;
+            if(!s.p1.isOrigin) s.p1.x += err;
+            if(!s.p2.isOrigin) s.p2.x -= err;
+        }
+    }
+
+    // --- Interacción Mouse ---
     function getCoords(e) {
-        const rect = svg.getBoundingClientRect();
-        return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+        const r = canvas.getBoundingClientRect();
+        return { x: (e.clientX - r.left - panX - r.width/2)/scale, y: (e.clientY - r.top - panY - r.height/2)/scale };
     }
 
     function findSnap(coords) {
-        return points.find(p => Math.sqrt(Math.pow(p.x - coords.x, 2) + Math.pow(p.y - coords.y, 2)) < SNAP_DIST);
+        const p = points.concat(originPoint).find(p => Math.hypot(p.x - coords.x, p.y - coords.y) < 15/scale);
+        return p || coords;
     }
 
-    svg.onmousedown = (e) => {
+    canvas.onmousedown = (e) => {
+        const coords = getCoords(e);
+        const snap = findSnap(coords);
+        dimModal.style.display = 'none';
+
+        if (mode === 'LINE') {
+            saveState();
+            const p = (snap instanceof Point) ? snap : new Point(snap.x, snap.y);
+            if (!(snap instanceof Point)) points.push(p);
+            if (!activePoint) activePoint = p;
+            else {
+                if(activePoint !== p) segments.push(new Segment(activePoint, p));
+                activePoint = p;
+            }
+        } else if (mode === 'RECT') {
+            saveState();
+            const pStart = (snap instanceof Point) ? snap : new Point(snap.x, snap.y);
+            if (!(snap instanceof Point)) points.push(pStart);
+            activePoint = pStart;
+        } else if (mode === 'CIRCLE') {
+            saveState();
+            const center = (snap instanceof Point) ? snap : new Point(snap.x, snap.y);
+            if (!(snap instanceof Point)) points.push(center);
+            activePoint = center;
+        } else if (mode === 'DIM_DIST') {
+            const target = findSegmentAt(coords) || findCircleAt(coords);
+            if (target) {
+                const c = new Constraint('DIST', [target.id], target.type === 'CIRCLE' ? target.radius*2 : target.length());
+                c.isPlacing = true;
+                constraints.push(c);
+                dimDragTarget = c;
+            }
+        } else if (mode === 'SELECT') {
+            const dim = findDimAt(e);
+            if (dim) { dimDragTarget = dim; return; }
+            if (snap instanceof Point) { dragTarget = snap; selectedIds = [snap.id]; }
+            else { selectedIds = []; }
+        } else if (mode === 'TRIM') {
+            saveState();
+            const s = findSegmentAt(coords); if (s) segments = segments.filter(x => x.id !== s.id);
+            const c = findCircleAt(coords); if (c) circles = circles.filter(x => x.id !== c.id);
+            solve();
+        }
+        render();
+    };
+
+    canvas.onmousemove = (e) => {
         const coords = getCoords(e);
         const snap = findSnap(coords);
 
-        if (mode === 'LINE') {
-            const p = snap || new Point(coords.x, coords.y);
-            if (!snap) points.push(p);
+        if (activePoint) {
+            if (mode === 'LINE') {
+                const gl = document.getElementById('ghost-line');
+                gl.style.display = 'block'; gl.setAttribute('x1', activePoint.x); gl.setAttribute('y1', activePoint.y);
+                gl.setAttribute('x2', snap.x); gl.setAttribute('y2', snap.y);
+            } else if (mode === 'RECT') {
+                const gr = document.getElementById('ghost-rect');
+                gr.style.display = 'block';
+                gr.setAttribute('x', Math.min(activePoint.x, snap.x)); gr.setAttribute('y', Math.min(activePoint.y, snap.y));
+                gr.setAttribute('width', Math.abs(snap.x - activePoint.x)); gr.setAttribute('height', Math.abs(snap.y - activePoint.y));
+            } else if (mode === 'CIRCLE') {
+                const gc = document.getElementById('ghost-circle');
+                gc.style.display = 'block'; gc.setAttribute('cx', activePoint.x); gc.setAttribute('cy', activePoint.y);
+                gc.setAttribute('r', Math.hypot(snap.x - activePoint.x, snap.y - activePoint.y));
+            }
+        }
 
-            if (!activePoint) {
-                activePoint = p;
-            } else {
-                if (activePoint !== p) {
-                    const seg = new Segment(activePoint, p);
-                    segments.push(seg);
-                    // Añadimos cota automática inicial
-                    constraints.push(new Constraint('DIST', [seg.id], seg.length()));
+        if (dimDragTarget && mode === 'DIM_DIST') {
+            const target = dimDragTarget;
+            const s = segments.find(seg => seg.id === target.targets[0]);
+            const circ = circles.find(ci => ci.id === target.targets[0]);
+
+            if (s) {
+                const midX = (s.p1.x + s.p2.x)/2, midY = (s.p1.y + s.p2.y)/2;
+                const dx = Math.abs(coords.x - midX), dy = Math.abs(coords.y - midY);
+                if (dx > dy * 2 && dx > 30) { target.subType = 'VERTICAL'; target.offsetX = coords.x - midX; target.offsetY = 0; }
+                else if (dy > dx * 2 && dy > 30) { target.subType = 'HORIZONTAL'; target.offsetY = coords.y - midY; target.offsetX = 0; }
+                else {
+                    target.subType = 'ALIGNED';
+                    const angle = Math.atan2(s.p2.y - s.p1.y, s.p2.x - s.p1.x) + Math.PI/2;
+                    const d = (coords.x - midX)*Math.cos(angle) + (coords.y - midY)*Math.sin(angle);
+                    target.offsetX = d * Math.cos(angle); target.offsetY = d * Math.sin(angle);
                 }
+            } else if (circ) {
+                target.offsetX = coords.x - circ.center.x; target.offsetY = coords.y - circ.center.y;
+            }
+            render();
+        }
+
+        if (dragTarget) { dragTarget.x = coords.x; dragTarget.y = coords.y; solve(); }
+    };
+
+    window.onmouseup = (e) => {
+        const coords = getCoords(e);
+        const snap = findSnap(coords);
+
+        if (activePoint) {
+            if (mode === 'RECT') {
+                const p2 = (snap instanceof Point) ? snap : new Point(snap.x, activePoint.y);
+                const p3 = (snap instanceof Point) ? snap : new Point(snap.x, snap.y);
+                const p4 = (snap instanceof Point) ? snap : new Point(activePoint.x, snap.y);
+                if (!(snap instanceof Point)) points.push(p2, p3, p4);
+                segments.push(new Segment(activePoint, p2), new Segment(p2, p3), new Segment(p3, p4), new Segment(p4, activePoint));
+                activePoint = null;
+            } else if (mode === 'CIRCLE') {
+                const r = Math.hypot(snap.x - activePoint.x, snap.y - activePoint.y);
+                if (r > 2) circles.push(new Circle(activePoint, r));
                 activePoint = null;
             }
-        } else if (mode === 'SELECT') {
-            if (snap) dragTarget = snap;
         }
-        render();
+        
+        document.querySelectorAll('.ghost').forEach(g => g.style.display = 'none');
+        dimDragTarget = null; dragTarget = null;
     };
 
-    window.onmousemove = (e) => {
-        if (!dragTarget) return;
-        const coords = getCoords(e);
-        dragTarget.x = coords.x;
-        dragTarget.y = coords.y;
-        solve();
-    };
+    canvas.ondblclick = () => { activePoint = null; render(); };
 
-    window.onmouseup = () => { dragTarget = null; };
+    // --- Auxiliares ---
+    function findSegmentAt(c) { return segments.find(s => distToSeg(c, s.p1, s.p2) < 10/scale); }
+    function findCircleAt(c) { return circles.find(ci => Math.abs(Math.hypot(c.x - ci.center.x, c.y - ci.center.y) - ci.radius) < 10/scale); }
+    function findDimAt(e) { const g = e.target.closest('.dim-group'); return g ? constraints.find(c => c.id === g.dataset.id) : null; }
+    
+    function distToSeg(p, v, w) {
+        const l2 = Math.pow(v.x-w.x, 2) + Math.pow(v.y-w.y, 2);
+        if (l2 === 0) return Math.hypot(p.x-v.x, p.y-v.y);
+        let t = Math.max(0, Math.min(1, ((p.x-v.x)*(w.x-v.x)+(p.y-v.y)*(w.y-v.y))/l2));
+        return Math.hypot(p.x - (v.x + t*(w.x-v.x)), p.y - (v.y + t*(w.y-v.y)));
+    }
 
-    // --- LÓGICA DE UI ---
     function setMode(m) {
-        mode = m;
+        mode = m; activePoint = null;
         document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
-        document.getElementById(`btn-${m.toLowerCase()}`).classList.add('active');
-        activePoint = null;
-        render();
+        const activeBtn = document.getElementById('btn-' + m.toLowerCase());
+        if(activeBtn) activeBtn.classList.add('active');
     }
 
-    function applyConstraint(type) {
-        const lastSeg = segments[segments.length - 1];
-        if (!lastSeg) return;
-        constraints = constraints.filter(c => !(c.targets[0] === lastSeg.id && (c.type === 'HORIZ' || c.type === 'VERT')));
-        constraints.push(new Constraint(type, [lastSeg.id]));
+    function applyConstraintAction(type) {
+        saveState();
+        if (type === 'COINCIDENT' && selectedIds.length === 2) {
+            constraints.push(new Constraint('COINCIDENT', [...selectedIds]));
+        } else if (segments.length > 0) {
+            const last = segments[segments.length-1];
+            constraints.push(new Constraint(type, [last.id]));
+        }
         solve();
     }
 
-    function editDimension(segId) {
-        const newVal = prompt("Ingresa la nueva longitud:");
-        if (newVal && !isNaN(newVal)) {
-            const c = constraints.find(c => c.targets[0] === segId && c.type === 'DIST');
-            if (c) c.value = parseFloat(newVal);
-            solve();
-        }
+    function openDimModal(e, c) {
+        e.stopPropagation();
+        dimModal.style.display = 'block';
+        dimModal.style.left = e.clientX + 'px'; dimModal.style.top = e.clientY + 'px';
+        dimInput.value = Math.round(c.value * 100) / 100;
+        dimInput.onkeydown = (ev) => { if(ev.key === 'Enter') { saveState(); c.value = parseFloat(dimInput.value); dimModal.style.display = 'none'; solve(); }};
+        dimInput.focus();
     }
 
-    function clearCanvas() {
-        points = []; segments = []; constraints = []; activePoint = null;
-        render();
-    }
+    function clearCanvas() { saveState(); points = []; segments = []; circles = []; constraints = []; render(); }
 
-    // --- RENDERIZADO SVG ---
     function render() {
-        svg.innerHTML = '';
+        const r = canvas.getBoundingClientRect();
+        mainTransform.setAttribute("transform", `translate(${panX + r.width/2}, ${panY + r.height/2}) scale(${scale})`);
+        gridLayer.innerHTML = `<line x1="-5000" y1="0" x2="5000" y2="0" class="axis" /><line x1="0" y1="-5000" x2="0" y2="5000" class="axis" /><circle cx="0" cy="0" class="origin-point" />`;
+        entitiesLayer.innerHTML = ''; uiLayer.innerHTML = '';
 
-        // Dibujar Segmentos
-        segments.forEach(seg => {
-            const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-            line.setAttribute("x1", seg.p1.x); line.setAttribute("y1", seg.p1.y);
-            line.setAttribute("x2", seg.p2.x); line.setAttribute("y2", seg.p2.y);
-            line.setAttribute("class", "segment");
-            svg.appendChild(line);
-
-            // Cota (Texto)
-            const midX = (seg.p1.x + seg.p2.x) / 2;
-            const midY = (seg.p1.y + seg.p2.y) / 2;
-            const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-            text.setAttribute("x", midX); text.setAttribute("y", midY - 10);
-            text.setAttribute("class", "dimension-text");
-            text.setAttribute("text-anchor", "middle");
-            text.textContent = Math.round(seg.length());
-            text.onclick = (e) => { e.stopPropagation(); editDimension(seg.id); };
-            svg.appendChild(text);
+        segments.forEach(s => {
+            const l = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            l.setAttribute("x1", s.p1.x); l.setAttribute("y1", s.p1.y); l.setAttribute("x2", s.p2.x); l.setAttribute("y2", s.p2.y);
+            l.setAttribute("class", "segment");
+            entitiesLayer.appendChild(l);
         });
 
-        // Dibujar Puntos
+        circles.forEach(ci => {
+            const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            c.setAttribute("cx", ci.center.x); c.setAttribute("cy", ci.center.y); c.setAttribute("r", ci.radius);
+            c.setAttribute("class", "circle-entity");
+            entitiesLayer.appendChild(c);
+        });
+
+        constraints.forEach(c => {
+            if (c.type !== 'DIST') return;
+            const s = segments.find(seg => seg.id === c.targets[0]);
+            const circ = circles.find(ci => ci.id === c.targets[0]);
+            const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+            g.setAttribute("class", "dim-group"); g.dataset.id = c.id;
+            g.ondblclick = (e) => openDimModal(e, c);
+
+            let tx, ty;
+            if (s) {
+                const p1 = s.p1, p2 = s.p2;
+                const midX = (p1.x + p2.x)/2, midY = (p1.y + p2.y)/2;
+                tx = midX + c.offsetX; ty = midY + c.offsetY;
+                if (c.subType === 'ALIGNED') {
+                    g.innerHTML = `<line x1="${p1.x}" y1="${p1.y}" x2="${p1.x+c.offsetX}" y2="${p1.y+c.offsetY}" class="dim-line" />
+                                   <line x1="${p2.x}" y1="${p2.y}" x2="${p2.x+c.offsetX}" y2="${p2.y+c.offsetY}" class="dim-line" />
+                                   <line x1="${p1.x+c.offsetX}" y1="${p1.y+c.offsetY}" x2="${p2.x+c.offsetX}" y2="${p2.y+c.offsetY}" stroke="var(--dim-color)" />`;
+                } else if (c.subType === 'HORIZONTAL') {
+                    g.innerHTML = `<line x1="${p1.x}" y1="${p1.y}" x2="${p1.x}" y2="${ty}" class="dim-line" />
+                                   <line x1="${p2.x}" y1="${p2.y}" x2="${p2.x}" y2="${ty}" class="dim-line" />
+                                   <line x1="${p1.x}" y1="${ty}" x2="${p2.x}" y2="${ty}" stroke="var(--dim-color)" />`;
+                } else {
+                    g.innerHTML = `<line x1="${p1.x}" y1="${p1.y}" x2="${tx}" y2="${p1.y}" class="dim-line" />
+                                   <line x1="${p2.x}" y1="${p2.y}" x2="${tx}" y2="${p2.y}" class="dim-line" />
+                                   <line x1="${tx}" y1="${p1.y}" x2="${tx}" y2="${p2.y}" stroke="var(--dim-color)" />`;
+                }
+            } else if (circ) {
+                tx = circ.center.x + c.offsetX; ty = circ.center.y + c.offsetY;
+                g.innerHTML = `<line x1="${circ.center.x}" y1="${circ.center.y}" x2="${tx}" y2="${ty}" stroke="var(--dim-color)" stroke-dasharray="2" />`;
+            }
+
+            g.innerHTML += `<rect x="${tx-15/scale}" y="${ty-8/scale}" width="${30/scale}" height="${16/scale}" class="dim-text-bg" />
+                            <text x="${tx}" y="${ty+4/scale}" class="dim-text" text-anchor="middle" style="font-size:${10/scale}px">${Math.round(c.value)}</text>`;
+            uiLayer.appendChild(g);
+        });
+
         points.forEach(p => {
-            const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-            circle.setAttribute("cx", p.x); circle.setAttribute("cy", p.y);
-            circle.setAttribute("r", 5);
-            circle.setAttribute("class", "point");
-            if (p === activePoint) circle.style.fill = "var(--accent)";
-            svg.appendChild(circle);
+            if (p.isOrigin) return;
+            const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            c.setAttribute("cx", p.x); c.setAttribute("cy", p.y); c.setAttribute("r", 4/scale);
+            c.setAttribute("class", "point " + (selectedIds.includes(p.id) ? "selected" : ""));
+            entitiesLayer.appendChild(c);
         });
-
-        // Visualizar Ángulos si hay polígonos cerrados (Simplicado para triángulos)
-        // Nota: En un sistema real se buscarían ciclos en el grafo.
     }
 
     render();
 </script>
-
 </body>
 </html>
