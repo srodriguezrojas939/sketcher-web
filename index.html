@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mini CAD 2D - Sketcher Matemático</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Open+Sans:wght@400;600&display=swap');
+
+        :root {
+            --bg: #F2F2F2;
+            --white: #FFFFFF;
+            --black: #000000;
+            --gray: #666;
+            --accent: #2196F3;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Open Sans', sans-serif;
+            background-color: var(--white);
+            color: var(--black);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* UI Estética anterior */
+        header {
+            padding: 20px;
+            text-align: center;
+            background: var(--bg);
+            border-bottom: 1px solid #ddd;
+        }
+
+        h1 { font-family: 'Playfair Display', serif; margin: 0; font-size: 28px; }
+        p.subtitle { font-family: 'Playfair Display', serif; font-weight: 700; margin: 5px 0 0; font-size: 14px; }
+
+        .toolbar {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            padding: 15px;
+            background: var(--white);
+            border-bottom: 1px solid #eee;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 50px;
+            border: 1px solid #ddd;
+            background: var(--white);
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.3s;
+            font-size: 13px;
+        }
+
+        .btn:hover { background: var(--bg); transform: translateY(-1px); }
+        .btn.active { background: var(--black); color: var(--white); border-color: var(--black); }
+
+        /* Área de Dibujo */
+        #viewport-container {
+            flex-grow: 1;
+            position: relative;
+            background-image: radial-gradient(#ddd 1px, transparent 1px);
+            background-size: 20px 20px;
+            cursor: crosshair;
+        }
+
+        svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .point { fill: var(--white); stroke: var(--black); stroke-width: 2; cursor: move; }
+        .point:hover { fill: var(--black); }
+        .segment { stroke: var(--black); stroke-width: 2; fill: none; }
+        .dimension-text { font-size: 12px; font-weight: 600; fill: var(--gray); cursor: pointer; user-select: none; }
+        .dimension-text:hover { fill: var(--black); text-decoration: underline; }
+        
+        .snap-guide { fill: rgba(33, 150, 243, 0.3); stroke: var(--accent); stroke-dasharray: 2; }
+
+        .info-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.9);
+            padding: 15px;
+            border-radius: 15px;
+            border: 1px solid #ddd;
+            font-size: 12px;
+            max-width: 200px;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Mini CAD 2D</h1>
+    <p class="subtitle">Geometría Computacional</p>
+</header>
+
+<div class="toolbar">
+    <button class="btn active" id="btn-line" onclick="setMode('LINE')">Dibujar Línea</button>
+    <button class="btn" id="btn-select" onclick="setMode('SELECT')">Mover / Editar</button>
+    <button class="btn" onclick="clearCanvas()">Limpiar</button>
+    <div style="border-left: 1px solid #ddd; margin: 0 10px;"></div>
+    <button class="btn" onclick="applyConstraint('HORIZ')">Horizontal</button>
+    <button class="btn" onclick="applyConstraint('VERT')">Vertical</button>
+</div>
+
+<div id="viewport-container">
+    <svg id="canvas">
+        </svg>
+    <div class="info-panel">
+        <strong>Guía:</strong><br>
+        1. Clic para puntos.<br>
+        2. Cierra polígonos haciendo clic en puntos existentes (Snap).<br>
+        3. Haz clic en los números para cambiar dimensiones.
+    </div>
+</div>
+
+<script>
+    // --- GEOMETRÍA ---
+    class Point {
+        constructor(x, y) {
+            this.x = x;
+            this.y = y;
+            this.id = Math.random().toString(36).substr(2, 9);
+        }
+    }
+
+    class Segment {
+        constructor(p1, p2) {
+            this.p1 = p1;
+            this.p2 = p2;
+            this.id = Math.random().toString(36).substr(2, 9);
+        }
+        length() {
+            return Math.sqrt(Math.pow(this.p2.x - this.p1.x, 2) + Math.pow(this.p2.y - this.p1.y, 2));
+        }
+    }
+
+    class Constraint {
+        constructor(type, targets, value = null) {
+            this.type = type; // 'DIST', 'HORIZ', 'VERT', 'ANGLE'
+            this.targets = targets; // IDs de segmentos o puntos
+            this.value = value;
+        }
+    }
+
+    // --- ESTADO ---
+    let points = [];
+    let segments = [];
+    let constraints = [];
+    let mode = 'LINE'; // 'LINE', 'SELECT'
+    let activePoint = null;
+    let dragTarget = null;
+    const SNAP_DIST = 15;
+
+    const svg = document.getElementById('canvas');
+
+    // --- SOLVER SIMPLE (RELAJACIÓN) ---
+    function solve() {
+        const iterations = 20;
+        for (let i = 0; i < iterations; i++) {
+            constraints.forEach(c => {
+                if (c.type === 'DIST') {
+                    const seg = segments.find(s => s.id === c.targets[0]);
+                    if (!seg) return;
+                    const dx = seg.p2.x - seg.p1.x;
+                    const dy = seg.p2.y - seg.p1.y;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist === 0) return;
+                    const diff = (dist - c.value) / dist * 0.5;
+                    const offsetX = dx * diff;
+                    const offsetY = dy * diff;
+                    
+                    // Solo movemos si no es el punto que el usuario está arrastrando
+                    if (seg.p1 !== dragTarget) { seg.p1.x += offsetX; seg.p1.y += offsetY; }
+                    if (seg.p2 !== dragTarget) { seg.p2.x -= offsetX; seg.p2.y -= offsetY; }
+                }
+                if (c.type === 'HORIZ') {
+                    const seg = segments.find(s => s.id === c.targets[0]);
+                    if (!seg) return;
+                    const midY = (seg.p1.y + seg.p2.y) / 2;
+                    if (seg.p1 !== dragTarget) seg.p1.y = midY;
+                    if (seg.p2 !== dragTarget) seg.p2.y = midY;
+                }
+                if (c.type === 'VERT') {
+                    const seg = segments.find(s => s.id === c.targets[0]);
+                    if (!seg) return;
+                    const midX = (seg.p1.x + seg.p2.x) / 2;
+                    if (seg.p1 !== dragTarget) seg.p1.x = midX;
+                    if (seg.p2 !== dragTarget) seg.p2.x = midX;
+                }
+            });
+        }
+        render();
+    }
+
+    // --- INTERACCIÓN ---
+    function getCoords(e) {
+        const rect = svg.getBoundingClientRect();
+        return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    }
+
+    function findSnap(coords) {
+        return points.find(p => Math.sqrt(Math.pow(p.x - coords.x, 2) + Math.pow(p.y - coords.y, 2)) < SNAP_DIST);
+    }
+
+    svg.onmousedown = (e) => {
+        const coords = getCoords(e);
+        const snap = findSnap(coords);
+
+        if (mode === 'LINE') {
+            const p = snap || new Point(coords.x, coords.y);
+            if (!snap) points.push(p);
+
+            if (!activePoint) {
+                activePoint = p;
+            } else {
+                if (activePoint !== p) {
+                    const seg = new Segment(activePoint, p);
+                    segments.push(seg);
+                    // Añadimos cota automática inicial
+                    constraints.push(new Constraint('DIST', [seg.id], seg.length()));
+                }
+                activePoint = null;
+            }
+        } else if (mode === 'SELECT') {
+            if (snap) dragTarget = snap;
+        }
+        render();
+    };
+
+    window.onmousemove = (e) => {
+        if (!dragTarget) return;
+        const coords = getCoords(e);
+        dragTarget.x = coords.x;
+        dragTarget.y = coords.y;
+        solve();
+    };
+
+    window.onmouseup = () => { dragTarget = null; };
+
+    // --- LÓGICA DE UI ---
+    function setMode(m) {
+        mode = m;
+        document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(`btn-${m.toLowerCase()}`).classList.add('active');
+        activePoint = null;
+        render();
+    }
+
+    function applyConstraint(type) {
+        const lastSeg = segments[segments.length - 1];
+        if (!lastSeg) return;
+        constraints = constraints.filter(c => !(c.targets[0] === lastSeg.id && (c.type === 'HORIZ' || c.type === 'VERT')));
+        constraints.push(new Constraint(type, [lastSeg.id]));
+        solve();
+    }
+
+    function editDimension(segId) {
+        const newVal = prompt("Ingresa la nueva longitud:");
+        if (newVal && !isNaN(newVal)) {
+            const c = constraints.find(c => c.targets[0] === segId && c.type === 'DIST');
+            if (c) c.value = parseFloat(newVal);
+            solve();
+        }
+    }
+
+    function clearCanvas() {
+        points = []; segments = []; constraints = []; activePoint = null;
+        render();
+    }
+
+    // --- RENDERIZADO SVG ---
+    function render() {
+        svg.innerHTML = '';
+
+        // Dibujar Segmentos
+        segments.forEach(seg => {
+            const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            line.setAttribute("x1", seg.p1.x); line.setAttribute("y1", seg.p1.y);
+            line.setAttribute("x2", seg.p2.x); line.setAttribute("y2", seg.p2.y);
+            line.setAttribute("class", "segment");
+            svg.appendChild(line);
+
+            // Cota (Texto)
+            const midX = (seg.p1.x + seg.p2.x) / 2;
+            const midY = (seg.p1.y + seg.p2.y) / 2;
+            const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            text.setAttribute("x", midX); text.setAttribute("y", midY - 10);
+            text.setAttribute("class", "dimension-text");
+            text.setAttribute("text-anchor", "middle");
+            text.textContent = Math.round(seg.length());
+            text.onclick = (e) => { e.stopPropagation(); editDimension(seg.id); };
+            svg.appendChild(text);
+        });
+
+        // Dibujar Puntos
+        points.forEach(p => {
+            const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            circle.setAttribute("cx", p.x); circle.setAttribute("cy", p.y);
+            circle.setAttribute("r", 5);
+            circle.setAttribute("class", "point");
+            if (p === activePoint) circle.style.fill = "var(--accent)";
+            svg.appendChild(circle);
+        });
+
+        // Visualizar Ángulos si hay polígonos cerrados (Simplicado para triángulos)
+        // Nota: En un sistema real se buscarían ciclos en el grafo.
+    }
+
+    render();
+</script>
+
+</body>
+</html>
