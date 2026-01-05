@@ -3,98 +3,61 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CAD Sketcher Pro - √(Raiz) Cuadrada²</title>
+    <title>ProCAD Sketcher v2 - Estabilidad y Precisión</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Open+Sans:wght@400;600&display=swap');
-
-        :root {
-            --bg: #F0F2F5; --panel: #FFFFFF; --black: #121212;
-            --blue: #2563EB; --red: #DC2626; --gray: #64748B;
-        }
-
-        body {
-            margin: 0; font-family: 'Open Sans', sans-serif;
-            background: var(--bg); color: var(--black);
-            display: grid; grid-template-columns: 260px 1fr 280px;
-            grid-template-rows: auto 1fr; height: 100vh; overflow: hidden;
-        }
-
-        header {
-            grid-column: 1 / -1; padding: 12px 25px;
-            background: var(--panel); border-bottom: 1px solid #E2E8F0;
-            display: flex; justify-content: space-between; align-items: center;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        }
-
-        header h1 { font-family: 'Playfair Display', serif; font-size: 20px; margin: 0; }
-
-        .sidebar {
-            background: var(--panel); border-right: 1px solid #E2E8F0;
-            padding: 15px; display: flex; flex-direction: column; gap: 8px; overflow-y: auto;
-        }
-
-        .right-panel { border-left: 1px solid #E2E8F0; padding: 15px; background: var(--panel); }
-
-        .tool-group { margin-bottom: 15px; }
-        .tool-group h3 { font-size: 11px; text-transform: uppercase; color: var(--gray); margin: 0 0 8px 5px; letter-spacing: 1px; }
-
-        .btn {
-            width: 100%; padding: 10px 12px; border-radius: 8px;
-            border: 1px solid #F1F5F9; background: white;
-            cursor: pointer; font-weight: 600; text-align: left;
-            transition: 0.2s; display: flex; align-items: center; gap: 10px; font-size: 13px;
-        }
-        .btn:hover { background: #F8FAFC; border-color: #CBD5E1; }
-        .btn.active { background: var(--black); color: white; border-color: var(--black); }
-
-        #viewport { position: relative; background: white; cursor: crosshair; overflow: hidden; }
+        :root { --bg: #F3F4F6; --panel: #FFFFFF; --black: #111827; --blue: #2563EB; --red: #EF4444; --gray: #9CA3AF; --fixed: #059669; }
+        body { margin: 0; font-family: 'Open Sans', sans-serif; background: var(--bg); color: var(--black); display: grid; grid-template-columns: 260px 1fr 280px; grid-template-rows: auto 1fr; height: 100vh; overflow: hidden; }
+        header { grid-column: 1 / -1; padding: 10px 25px; background: var(--panel); border-bottom: 1px solid #E5E7EB; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        header h1 { font-family: 'Playfair Display', serif; font-size: 18px; margin: 0; }
+        .sidebar, .right-panel { background: var(--panel); padding: 15px; overflow-y: auto; border-color: #E5E7EB; border-style: solid; }
+        .sidebar { border-right-width: 1px; display: flex; flex-direction: column; gap: 8px; }
+        .right-panel { border-left-width: 1px; }
+        .tool-group h3 { font-size: 10px; text-transform: uppercase; color: var(--gray); margin: 0 0 8px 0; letter-spacing: 1px; }
+        .btn { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #F3F4F6; background: white; cursor: pointer; font-weight: 600; text-align: left; display: flex; align-items: center; gap: 10px; font-size: 13px; transition: 0.2s; }
+        .btn:hover { background: #F9FAFB; }
+        .btn.active { background: var(--black); color: white; }
+        .undo-redo-row { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 10px; }
+        #viewport { position: relative; background: white; overflow: hidden; cursor: crosshair; }
         svg { width: 100%; height: 100%; touch-action: none; }
-
-        /* Estilos Geometría */
-        .sketch-line { stroke: var(--black); stroke-width: 2; fill: none; pointer-events: none; }
-        .sketch-circle { stroke: var(--black); stroke-width: 2; fill: rgba(0,0,0,0.02); pointer-events: none; }
+        .sketch-line { stroke: var(--black); stroke-width: 2; fill: none; }
+        .sketch-circle { stroke: var(--black); stroke-width: 2; fill: rgba(0,0,0,0.02); }
         .point { fill: white; stroke: var(--black); stroke-width: 1.5; cursor: move; }
-        .point:hover { fill: var(--black); }
-        
-        /* Acotación */
-        .dim-group { pointer-events: all; cursor: pointer; }
-        .dim-line { stroke: var(--blue); stroke-width: 1; stroke-dasharray: 2; }
-        .dim-text { fill: var(--blue); font-weight: 700; font-size: 11px; user-select: none; }
-        .angle-arc { fill: none; stroke: var(--red); stroke-width: 1.5; }
-        .angle-text { fill: var(--red); font-weight: 700; font-size: 11px; }
-
-        .constraint-item {
-            font-size: 12px; padding: 8px; border-radius: 6px;
-            background: #F8FAFC; border: 1px solid #E2E8F0; margin-bottom: 4px;
-            display: flex; justify-content: space-between;
-        }
+        .point.fixed { fill: var(--fixed); stroke: var(--fixed); }
+        .dim-text { fill: var(--blue); font-weight: 700; font-size: 11px; cursor: pointer; user-select: none; }
+        .angle-text { fill: var(--red); font-weight: 700; font-size: 11px; cursor: pointer; }
+        .constraint-item { font-size: 11px; padding: 6px; background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 4px; margin-bottom: 3px; }
     </style>
 </head>
 <body>
 
 <header>
-    <h1>ProCAD Sketcher</h1>
+    <h1>ProCAD Sketcher v2</h1>
     <div style="font-family: 'Playfair Display'; font-weight: 700; font-size: 14px;">√(Raiz) Cuadrada²</div>
 </header>
 
 <div class="sidebar">
-    <div class="tool-group">
-        <h3>Dibujo Básico</h3>
-        <button class="btn active" id="btn-LINE" onclick="setMode('LINE')">📏 Línea</button>
-        <button class="btn" id="btn-CIRCLE" onclick="setMode('CIRCLE')">⭕ Círculo</button>
-        <button class="btn" id="btn-RECT" onclick="setMode('RECT')">🟦 Rectángulo</button>
-        <button class="btn" id="btn-TRI" onclick="setMode('TRI')">🔺 Triángulo</button>
+    <div class="undo-redo-row">
+        <button class="btn" onclick="sketcher.undo()">⟲ Undo</button>
+        <button class="btn" onclick="sketcher.redo()">⟳ Redo</button>
     </div>
     <div class="tool-group">
-        <h3>Anotación y Edición</h3>
-        <button class="btn" id="btn-DIM" onclick="setMode('DIM')">🏷️ Acotar Distancia</button>
-        <button class="btn" id="btn-ANGLE" onclick="setMode('ANGLE')">📐 Acotar Ángulo</button>
-        <button class="btn" id="btn-TRIM" onclick="setMode('TRIM')">✂️ Tijeras</button>
+        <h3>Primitivas</h3>
+        <button class="btn active" id="btn-LINE" onclick="sketcher.setMode('LINE')">📏 Línea</button>
+        <button class="btn" id="btn-CIRCLE" onclick="sketcher.setMode('CIRCLE')">⭕ Círculo</button>
+        <button class="btn" id="btn-RECT" onclick="sketcher.setMode('RECT')">🟦 Rectángulo</button>
     </div>
     <div class="tool-group">
-        <h3>Restricciones Fijas</h3>
-        <button class="btn" onclick="applyQuickConstraint('HORIZ')">▬ Horizontal</button>
-        <button class="btn" onclick="applyQuickConstraint('VERT')">▮ Vertical</button>
+        <h3>Restricciones</h3>
+        <button class="btn" onclick="sketcher.setMode('DIM')">🏷️ Acotar Longitud</button>
+        <button class="btn" onclick="sketcher.setMode('ANGLE')">📐 Acotar Ángulo</button>
+        <button class="btn" onclick="sketcher.applyStatic('HORIZ')">▬ Horizontal</button>
+        <button class="btn" onclick="sketcher.applyStatic('VERT')">▮ Vertical</button>
+        <button class="btn" onclick="sketcher.toggleFixed()">⚓ Fijar Punto (Ground)</button>
+    </div>
+    <div class="tool-group">
+        <h3>Modificación</h3>
+        <button class="btn" id="btn-TRIM" onclick="sketcher.setMode('TRIM')">✂️ Tijeras (Trim)</button>
     </div>
 </div>
 
@@ -104,239 +67,302 @@
 
 <div class="right-panel">
     <div class="tool-group">
-        <h3>Gestor de Relaciones</h3>
+        <h3>Grafos de Restricción</h3>
         <div id="constraint-list"></div>
     </div>
 </div>
 
 <script>
-    // --- CORE DATA ---
-    let points = [], segments = [], circles = [], constraints = [];
-    let mode = 'LINE', tempPoints = [], dragTarget = null;
-    const svg = document.getElementById('canvas');
+class SketchState {
+    constructor() {
+        this.points = [];
+        this.segments = [];
+        this.circles = [];
+        this.constraints = [];
+    }
+    clone() {
+        const newState = new SketchState();
+        newState.points = JSON.parse(JSON.stringify(this.points));
+        newState.segments = JSON.parse(JSON.stringify(this.segments));
+        newState.circles = JSON.parse(JSON.stringify(this.circles));
+        newState.constraints = JSON.parse(JSON.stringify(this.constraints));
+        return newState;
+    }
+}
 
-    class Point {
-        constructor(x, y) { this.x = x; this.y = y; this.id = btoa(Math.random()).substring(0,8); }
-    }
-    class Segment {
-        constructor(p1, p2) { this.p1 = p1; this.p2 = p2; this.id = 'S'+Math.random().toString(36).substr(2,5); }
-        get len() { return Math.hypot(this.p2.x - this.p1.x, this.p2.y - this.p1.y); }
-        get angle() { return Math.atan2(this.p2.y - this.p1.y, this.p2.x - this.p1.x); }
-    }
-    class Circle {
-        constructor(center, radiusPoint) { this.center = center; this.radiusPoint = radiusPoint; this.id = 'C'+Math.random().toString(36).substr(2,5); }
-        get radius() { return Math.hypot(this.radiusPoint.x - this.center.x, this.radiusPoint.y - this.center.y); }
+class CADSketcher {
+    constructor() {
+        this.state = new SketchState();
+        this.history = [];
+        this.redoStack = [];
+        this.mode = 'LINE';
+        this.tempIds = [];
+        this.dragNode = null;
+        this.EPS = 1e-6;
+        this.svg = document.getElementById('canvas');
+        this.initEvents();
     }
 
-    // --- SOLVER ---
-    function solve() {
-        for (let i = 0; i < 50; i++) {
-            constraints.forEach(c => {
-                if (c.type === 'DIST') {
-                    const s = segments.find(seg => seg.id === c.targetId);
-                    if (!s) return;
-                    const dx = s.p2.x - s.p1.x, dy = s.p2.y - s.p1.y;
-                    const cur = Math.hypot(dx, dy);
-                    const factor = (cur - c.value) / cur * 0.5;
-                    if (s.p1 !== dragTarget) { s.p1.x += dx * factor; s.p1.y += dy * factor; }
-                    if (s.p2 !== dragTarget) { s.p2.x -= dx * factor; s.p2.y -= dy * factor; }
-                }
-                if (c.type === 'HORIZ') {
-                    const s = segments.find(seg => seg.id === c.targetId);
-                    if (s) { const ay = (s.p1.y + s.p2.y)/2; s.p1.y = s.p2.y = ay; }
-                }
-                if (c.type === 'VERT') {
-                    const s = segments.find(seg => seg.id === c.targetId);
-                    if (s) { const ax = (s.p1.x + s.p2.x)/2; s.p1.x = s.p2.x = ax; }
-                }
-                if (c.type === 'ANGLE') {
-                    const s1 = segments.find(s => s.id === c.s1Id);
-                    const s2 = segments.find(s => s.id === c.s2Id);
-                    if (!s1 || !s2) return;
-                    // Ajuste simple de ángulo rotando s2 respecto al punto compartido
-                    const targetRad = c.value * (Math.PI/180);
-                    const curAngle = s2.angle - s1.angle;
-                    const diff = targetRad - curAngle;
-                    // Rotar p2 de s2
-                    const s2p1 = s2.p1, s2p2 = s2.p2;
-                    const cos = Math.cos(diff), sin = Math.sin(diff);
-                    const nx = cos*(s2p2.x-s2p1.x) - sin*(s2p2.y-s2p1.y) + s2p1.x;
-                    const ny = sin*(s2p2.x-s2p1.x) + cos*(s2p2.y-s2p1.y) + s2p1.y;
-                    s2p2.x = nx; s2p2.y = ny;
-                }
+    saveHistory() {
+        this.history.push(this.state.clone());
+        this.redoStack = [];
+        if (this.history.length > 50) this.history.shift();
+    }
+
+    undo() {
+        if (this.history.length > 0) {
+            this.redoStack.push(this.state.clone());
+            this.state = this.history.pop();
+            this.render();
+        }
+    }
+
+    redo() {
+        if (this.redoStack.length > 0) {
+            this.history.push(this.state.clone());
+            this.state = this.redoStack.pop();
+            this.render();
+        }
+    }
+
+    // --- SOLVER DE RESTRICCIONES (POS) ---
+    solve() {
+        const iterations = 40;
+        for (let i = 0; i < iterations; i++) {
+            let maxErr = 0;
+            this.state.constraints.forEach(c => {
+                const err = this.applyConstraint(c);
+                maxErr = Math.max(maxErr, err);
             });
+            if (maxErr < this.EPS) break;
         }
-        render();
     }
 
-    // --- HERRAMIENTAS ---
-    svg.onmousedown = (e) => {
-        const { x, y } = getCoords(e);
-        const snap = findSnap(x, y);
-        const p = snap || new Point(x, y);
-
-        if (mode === 'TRIM') {
-            // Borrar Círculos
-            const circ = circles.find(c => Math.abs(Math.hypot(c.center.x - x, c.center.y - y) - c.radius) < 10);
-            if (circ) { circles = circles.filter(c => c.id !== circ.id); cleanupPoints(); return render(); }
-            
-            // Borrar Líneas
-            const seg = findSegmentAt(x, y);
-            if (seg) {
-                segments = segments.filter(s => s.id !== seg.id);
-                constraints = constraints.filter(c => c.targetId !== seg.id);
-                cleanupPoints();
-            }
-        } else if (mode === 'LINE') {
-            if (!snap) points.push(p);
-            if (tempPoints[0]) {
-                const s = new Segment(tempPoints[0], p);
-                segments.push(s);
-                constraints.push({type:'DIST', targetId: s.id, value: s.len});
-                tempPoints = [];
-            } else { tempPoints = [p]; }
-        } else if (mode === 'CIRCLE') {
-            if (!snap) points.push(p);
-            if (tempPoints[0]) {
-                circles.push(new Circle(tempPoints[0], p));
-                tempPoints = [];
-            } else { tempPoints = [p]; }
-        } else if (mode === 'RECT') {
-            const p1 = p, p2 = new Point(p.x+100, p.y), p3 = new Point(p.x+100, p.y+60), p4 = new Point(p.x, p.y+60);
-            points.push(p1,p2,p3,p4);
-            const s1 = new Segment(p1,p2), s2 = new Segment(p2,p3), s3 = new Segment(p3,p4), s4 = new Segment(p4,p1);
-            segments.push(s1,s2,s3,s4);
-            constraints.push({type:'HORIZ', targetId:s1.id}, {type:'VERT', targetId:s2.id}, {type:'DIST', targetId:s1.id, value:100}, {type:'DIST', targetId:s2.id, value:60});
-        } else if (mode === 'TRI') {
-            const p1 = p, p2 = new Point(p.x+80, p.y), p3 = new Point(p.x+40, p.y-70);
-            points.push(p1,p2,p3);
-            const s1 = new Segment(p1,p2), s2 = new Segment(p2,p3), s3 = new Segment(p3,p1);
-            segments.push(s1,s2,s3);
-            constraints.push({type:'DIST', targetId:s1.id, value:80}, {type:'DIST', targetId:s2.id, value:80}, {type:'DIST', targetId:s3.id, value:80});
-        } else if (mode === 'DIM') {
-            const s = findSegmentAt(x, y);
-            if (s) editDim(s.id);
-        } else if (mode === 'ANGLE') {
-            const s = findSegmentAt(x, y);
-            if (s) {
-                if (tempPoints.length === 0) tempPoints.push(s);
-                else {
-                    const s1 = tempPoints[0], s2 = s;
-                    if (s1.id !== s2.id) {
-                        const angle = Math.abs((s2.angle - s1.angle) * 180 / Math.PI);
-                        constraints.push({type:'ANGLE', s1Id: s1.id, s2Id: s2.id, value: angle});
-                    }
-                    tempPoints = [];
-                }
+    applyConstraint(c) {
+        if (c.type === 'DIST') {
+            const s = this.state.segments.find(seg => seg.id === c.targetId);
+            if (!s) return 0;
+            const p1 = this.findPoint(s.p1Id), p2 = this.findPoint(s.p2Id);
+            const dx = p2.x - p1.x, dy = p2.y - p1.y;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            if (dist < this.EPS) return 0;
+            const ratio = (dist - c.value) / dist * 0.5;
+            this.movePoint(p1, dx * ratio, dy * ratio);
+            this.movePoint(p2, -dx * ratio, -dy * ratio);
+            return Math.abs(dist - c.value);
+        }
+        if (c.type === 'HORIZ' || c.type === 'VERT') {
+            const s = this.state.segments.find(seg => seg.id === c.targetId);
+            if (!s) return 0;
+            const p1 = this.findPoint(s.p1Id), p2 = this.findPoint(s.p2Id);
+            if (c.type === 'HORIZ') {
+                const avgY = (p1.y + p2.y) / 2;
+                this.setPointPos(p1, null, avgY);
+                this.setPointPos(p2, null, avgY);
+                return Math.abs(p1.y - p2.y);
+            } else {
+                const avgX = (p1.x + p2.x) / 2;
+                this.setPointPos(p1, avgX, null);
+                this.setPointPos(p2, avgX, null);
+                return Math.abs(p1.x - p2.x);
             }
         }
-        render();
-        updateUI();
-    };
+        if (c.type === 'ANGLE') {
+            const s1 = this.state.segments.find(s => s.id === c.s1Id);
+            const s2 = this.state.segments.find(s => s.id === c.s2Id);
+            if (!s1 || !s2) return 0;
 
-    // --- HELPERS ---
-    function getCoords(e) { const r = svg.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
-    function findSnap(x, y) { return points.find(p => Math.hypot(p.x - x, p.y - y) < 12); }
-    function findSegmentAt(x, y) {
-        return segments.find(s => {
-            const d = Math.abs((s.p2.y - s.p1.y)*x - (s.p2.x - s.p1.x)*y + s.p2.x*s.p1.y - s.p2.y*s.p1.x) / s.len;
-            return d < 8;
+            // Encontrar vértice común
+            const commonId = [s1.p1Id, s1.p2Id].find(id => id === s2.p1Id || id === s2.p2Id);
+            if (!commonId) return 0;
+
+            const v = this.findPoint(commonId);
+            const other1Id = (s1.p1Id === commonId) ? s1.p2Id : s1.p1Id;
+            const other2Id = (s2.p1Id === commonId) ? s2.p2Id : s2.p1Id;
+            const p1 = this.findPoint(other1Id), p2 = this.findPoint(other2Id);
+
+            const a1 = Math.atan2(p1.y - v.y, p1.x - v.x);
+            const a2 = Math.atan2(p2.y - v.y, p2.x - v.x);
+            const targetRad = c.value * (Math.PI / 180);
+            const diff = targetRad - (a2 - a1);
+
+            // Rotar p2 alrededor de v
+            const cos = Math.cos(diff), sin = Math.sin(diff);
+            const rx = p2.x - v.x, ry = p2.y - v.y;
+            this.setPointPos(p2, v.x + (rx * cos - ry * sin), v.y + (rx * sin + ry * cos));
+            return Math.abs(diff);
+        }
+        return 0;
+    }
+
+    movePoint(p, dx, dy) {
+        if (p.fixed || p === this.dragNode) return;
+        p.x += dx; p.y += dy;
+    }
+
+    setPointPos(p, x, y) {
+        if (p.fixed || p === this.dragNode) return;
+        if (x !== null) p.x = x;
+        if (y !== null) p.y = y;
+    }
+
+    // --- GEOMETRÍA Y DETECCIÓN ---
+    findPoint(id) { return this.state.points.find(p => p.id === id); }
+
+    getSegmentDist(x, y, seg) {
+        const p1 = this.findPoint(seg.p1Id), p2 = this.findPoint(seg.p2Id);
+        const l2 = Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2);
+        if (l2 === 0) return Math.hypot(x - p1.x, y - p1.y);
+        let t = ((x - p1.x) * (p2.x - p1.x) + (y - p1.y) * (p2.y - p1.y)) / l2;
+        t = Math.max(0, Math.min(1, t)); // Clamp al segmento
+        return Math.hypot(x - (p1.x + t * (p2.x - p1.x)), y - (p1.y + t * (p2.y - p1.y)));
+    }
+
+    trim(x, y) {
+        this.saveHistory();
+        const seg = this.state.segments.find(s => this.getSegmentDist(x, y, s) < 10);
+        if (seg) {
+            this.state.constraints = this.state.constraints.filter(c => c.targetId !== seg.id && c.s1Id !== seg.id && c.s2Id !== seg.id);
+            this.state.segments = this.state.segments.filter(s => s.id !== seg.id);
+        }
+        const circ = this.state.circles.find(c => {
+            const p = this.findPoint(c.centerId);
+            return Math.abs(Math.hypot(x - p.x, y - p.y) - c.radius) < 10;
         });
-    }
-
-    function cleanupPoints() {
-        points = points.filter(p => 
-            segments.some(s => s.p1 === p || s.p2 === p) || 
-            circles.some(c => c.center === p || c.radiusPoint === p)
-        );
-    }
-
-    function setMode(m) {
-        mode = m; tempPoints = [];
-        document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
-        document.getElementById('btn-'+m).classList.add('active');
-    }
-
-    function editDim(id, type='DIST') {
-        const c = constraints.find(c => (c.targetId === id || c.s2Id === id) && c.type === type);
-        if (!c) return;
-        const val = prompt(`Nuevo valor (${type === 'DIST' ? 'px' : 'grados'}):`, Math.round(c.value));
-        if (val && !isNaN(val)) { c.value = parseFloat(val); solve(); }
-    }
-
-    function applyQuickConstraint(type) {
-        if (segments.length > 0) {
-            const last = segments[segments.length-1];
-            constraints.push({type: type, targetId: last.id});
-            solve();
-        }
-    }
-
-    function updateUI() {
-        const list = document.getElementById('constraint-list');
-        list.innerHTML = constraints.map((c, i) => `
-            <div class="constraint-item">
-                <span>${c.type} (${c.targetId || 'Sujeto'})</span>
-                <span style="color:var(--blue)">${c.value ? Math.round(c.value) : ''}</span>
-            </div>
-        `).join('');
-    }
-
-    // --- RENDER ---
-    function render() {
-        svg.innerHTML = '';
+        if (circ) this.state.circles = this.state.circles.filter(c => c.id !== circ.id);
         
-        circles.forEach(c => {
-            const el = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-            el.setAttribute("cx", c.center.x); el.setAttribute("cy", c.center.y);
-            el.setAttribute("r", c.radius); el.setAttribute("class", "sketch-circle");
-            svg.appendChild(el);
-        });
+        // Limpiar puntos huérfanos
+        this.state.points = this.state.points.filter(p => 
+            this.state.segments.some(s => s.p1Id === p.id || s.p2Id === p.id) ||
+            this.state.circles.some(c => c.centerId === p.id)
+        );
+        this.render();
+    }
 
-        segments.forEach(s => {
+    // --- UI Y EVENTOS ---
+    initEvents() {
+        this.svg.onmousedown = (e) => {
+            const { x, y } = this.getCoords(e);
+            const snap = this.state.points.find(p => Math.hypot(p.x - x, p.y - y) < 12);
+
+            if (this.mode === 'TRIM') return this.trim(x, y);
+
+            const p = snap || { x, y, id: 'P' + Date.now(), fixed: false };
+            if (!snap) this.state.points.push(p);
+
+            if (this.mode === 'LINE') {
+                if (this.tempIds[0]) {
+                    this.saveHistory();
+                    const seg = { p1Id: this.tempIds[0], p2Id: p.id, id: 'S' + Date.now() };
+                    this.state.segments.push(seg);
+                    this.state.constraints.push({ type: 'DIST', targetId: seg.id, value: Math.hypot(this.findPoint(seg.p1Id).x - p.x, this.findPoint(seg.p1Id).y - p.y) });
+                    this.tempIds = [];
+                } else { this.tempIds = [p.id]; }
+            } else if (this.mode === 'RECT') {
+                this.saveHistory();
+                const p1 = p, p2 = {x: p.x+80, y:p.y, id:'P'+Date.now()+'2'}, p3 = {x:p.x+80, y:p.y+50, id:'P'+Date.now()+'3'}, p4 = {x:p.x, y:p.y+50, id:'P'+Date.now()+'4'};
+                p1.fixed = true; // Auto ground
+                this.state.points.push(p2,p3,p4);
+                const s1 = {p1Id:p1.id, p2Id:p2.id, id:'SR1'}, s2 = {p1Id:p2.id, p2Id:p3.id, id:'SR2'}, s3 = {p1Id:p3.id, p2Id:p4.id, id:'SR3'}, s4 = {p1Id:p4.id, p2Id:p1.id, id:'SR4'};
+                this.state.segments.push(s1,s2,s3,s4);
+                this.state.constraints.push({type:'HORIZ', targetId:s1.id}, {type:'VERT', targetId:s2.id}, {type:'DIST', targetId:s1.id, value:80}, {type:'DIST', targetId:s2.id, value:50});
+            } else if (this.mode === 'ANGLE') {
+                const seg = this.state.segments.find(s => this.getSegmentDist(x, y, s) < 10);
+                if (seg) {
+                    if (this.tempIds[0] && this.tempIds[0] !== seg.id) {
+                        this.saveHistory();
+                        this.state.constraints.push({ type: 'ANGLE', s1Id: this.tempIds[0], s2Id: seg.id, value: 90 });
+                        this.tempIds = [];
+                    } else { this.tempIds = [seg.id]; }
+                }
+            } else if (this.mode === 'DIM') {
+                const seg = this.state.segments.find(s => this.getSegmentDist(x, y, s) < 10);
+                if (seg) this.editDimension(seg.id, 'DIST');
+            } else {
+                if (snap) this.dragNode = snap;
+            }
+            this.solve();
+            this.render();
+        };
+
+        window.onmousemove = (e) => {
+            if (this.dragNode) {
+                const { x, y } = this.getCoords(e);
+                this.dragNode.x = x; this.dragNode.y = y;
+                this.solve();
+                this.render();
+            }
+        };
+        window.onmouseup = () => this.dragNode = null;
+    }
+
+    getCoords(e) { const r = this.svg.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+
+    setMode(m) { this.mode = m; this.tempIds = []; document.querySelectorAll('.btn').forEach(b => b.classList.toggle('active', b.id === 'btn-'+m)); }
+
+    toggleFixed() {
+        if (this.dragNode) { this.saveHistory(); this.dragNode.fixed = !this.dragNode.fixed; this.render(); }
+        else alert("Haz clic y arrastra un punto mientras presionas este botón (o simplemente selecciona 'Mover' primero)");
+    }
+
+    applyStatic(type) {
+        const last = this.state.segments[this.state.segments.length - 1];
+        if (last) { this.saveHistory(); this.state.constraints.push({ type, targetId: last.id }); this.solve(); this.render(); }
+    }
+
+    editDimension(id, type) {
+        const c = this.state.constraints.find(c => (c.targetId === id || c.s2Id === id) && c.type === type);
+        if (!c) return;
+        const val = prompt(`Valor para ${type}:`, Math.round(c.value));
+        if (val !== null && !isNaN(val)) { this.saveHistory(); c.value = parseFloat(val); this.solve(); this.render(); }
+    }
+
+    render() {
+        const canvas = this.svg; canvas.innerHTML = '';
+        this.state.segments.forEach(s => {
+            const p1 = this.findPoint(s.p1Id), p2 = this.findPoint(s.p2Id);
             const l = document.createElementNS("http://www.w3.org/2000/svg", "line");
-            l.setAttribute("x1", s.p1.x); l.setAttribute("y1", s.p1.y);
-            l.setAttribute("x2", s.p2.x); l.setAttribute("y2", s.p2.y);
+            l.setAttribute("x1", p1.x); l.setAttribute("y1", p1.y);
+            l.setAttribute("x2", p2.x); l.setAttribute("y2", p2.y);
             l.setAttribute("class", "sketch-line");
-            svg.appendChild(l);
-
-            // Cota de Distancia
-            const midX = (s.p1.x + s.p2.x)/2, midY = (s.p1.y + s.p2.y)/2;
-            const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
-            g.setAttribute("class", "dim-group");
-            g.onclick = (e) => { e.stopPropagation(); editDim(s.id); };
+            canvas.appendChild(l);
             
-            const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
-            t.setAttribute("x", midX); t.setAttribute("y", midY - 8);
-            t.setAttribute("class", "dim-text"); t.setAttribute("text-anchor", "middle");
-            t.textContent = Math.round(s.len);
-            g.appendChild(t);
-            svg.appendChild(g);
-        });
-
-        // Renderizar arcos de ángulo si existen
-        constraints.filter(c => c.type === 'ANGLE').forEach(c => {
-            const s1 = segments.find(s => s.id === c.s1Id);
-            const s2 = segments.find(s => s.id === c.s2Id);
-            if (s1 && s2) {
+            // Texto de dimensión
+            const distC = this.state.constraints.find(c => c.targetId === s.id && c.type === 'DIST');
+            if (distC) {
                 const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
-                t.setAttribute("x", s1.p1.x + 20); t.setAttribute("y", s1.p1.y - 20);
-                t.setAttribute("class", "angle-text");
-                t.textContent = Math.round(c.value) + "°";
-                t.onclick = () => editDim(s2.id, 'ANGLE');
-                svg.appendChild(t);
+                t.setAttribute("x", (p1.x + p2.x)/2); t.setAttribute("y", (p1.y + p2.y)/2 - 10);
+                t.setAttribute("class", "dim-text"); t.setAttribute("text-anchor", "middle");
+                t.textContent = Math.round(distC.value);
+                t.onclick = () => this.editDimension(s.id, 'DIST');
+                canvas.appendChild(t);
             }
         });
 
-        points.forEach(p => {
+        this.state.constraints.filter(c => c.type === 'ANGLE').forEach(c => {
+            const s1 = this.state.segments.find(s => s.id === c.s1Id);
+            const p = this.findPoint(s1.p1Id);
+            const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            t.setAttribute("x", p.x + 20); t.setAttribute("y", p.y - 20);
+            t.setAttribute("class", "angle-text");
+            t.textContent = Math.round(c.value) + "°";
+            t.onclick = () => this.editDimension(c.s2Id, 'ANGLE');
+            canvas.appendChild(t);
+        });
+
+        this.state.points.forEach(p => {
             const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
             c.setAttribute("cx", p.x); c.setAttribute("cy", p.y);
-            c.setAttribute("r", 3.5); c.setAttribute("class", "point");
-            svg.appendChild(c);
+            c.setAttribute("r", 4);
+            c.setAttribute("class", `point ${p.fixed ? 'fixed' : ''}`);
+            canvas.appendChild(c);
         });
-    }
 
-    render();
+        document.getElementById('constraint-list').innerHTML = this.state.constraints.map(c => `<div class="constraint-item"><b>${c.type}</b>: ${Math.round(c.value || 0)}</div>`).join('');
+    }
+}
+
+const sketcher = new CADSketcher();
 </script>
 </body>
 </html>
