@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mini CAD 2D Pro - Full Features</title>
+    <title>Mini CAD 2D - Solucionador Geométrico</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Playfair+Display:wght@700&display=swap');
 
         :root {
-            --bg: #F0F2F5;
+            --bg: #F8F9FA;
             --white: #FFFFFF;
             --black: #1A1A1A;
             --gray: #6C757D;
@@ -17,13 +17,13 @@
             --axis: #DEE2E6;
             --dim-color: #007BFF;
             --dim-conflict: #FF4136;
-            --radius: 10px;
+            --delete: #DC3545;
         }
 
         body {
             margin: 0;
             font-family: 'Inter', sans-serif;
-            background-color: var(--bg);
+            background-color: var(--white);
             color: var(--black);
             display: flex;
             flex-direction: column;
@@ -36,7 +36,6 @@
             text-align: center;
             background: var(--white);
             border-bottom: 1px solid var(--axis);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
         }
 
         h1 { font-family: 'Playfair Display', serif; margin: 0; font-size: 18px; letter-spacing: -0.5px; }
@@ -46,31 +45,32 @@
             justify-content: center;
             gap: 8px;
             padding: 12px;
-            background: var(--white);
+            background: var(--bg);
             border-bottom: 1px solid var(--axis);
             flex-wrap: wrap;
+            align-items: center;
         }
 
         .btn {
             padding: 8px 16px;
-            border-radius: var(--radius);
-            border: 1px solid #E0E0E0;
+            border-radius: 20px;
+            border: 1px solid #CED4DA;
             background: var(--white);
-            font-weight: 500;
+            font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            font-size: 13px;
+            transition: all 0.2s ease;
+            font-size: 12px;
             display: flex;
             align-items: center;
             gap: 6px;
-            user-select: none;
+            color: var(--black);
         }
 
-        .btn:hover { background: #F8F9FA; border-color: #CCC; transform: translateY(-1px); }
-        .btn:active { transform: translateY(0); }
-        .btn.active { background: var(--black); color: var(--white); border-color: var(--black); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
-        
-        .divider { width: 1px; background: var(--axis); margin: 0 8px; height: 30px; align-self: center; }
+        .btn:hover { background: #E9ECEF; border-color: #ADB5BD; }
+        .btn.active { background: var(--black); color: var(--white); border-color: var(--black); }
+        .btn-danger:hover { background: #FFF5F5; border-color: var(--delete); color: var(--delete); }
+
+        .divider { border-left: 1px solid #DEE2E6; height: 24px; margin: 0 8px; }
 
         #viewport-container {
             flex-grow: 1;
@@ -78,95 +78,133 @@
             background-color: #FFFFFF;
             cursor: crosshair;
             overflow: hidden;
-            touch-action: none;
         }
 
-        svg { width: 100%; height: 100%; display: block; outline: none; }
+        svg { width: 100%; height: 100%; display: block; }
 
-        /* Estilos de Entidades */
-        .axis { stroke: var(--axis); stroke-width: 1.5; pointer-events: none; }
-        .origin-point { fill: var(--origin); r: 5; stroke: white; stroke-width: 2; }
-        .point { fill: var(--white); stroke: var(--black); stroke-width: 2; cursor: pointer; transition: r 0.15s; }
-        .point:hover { r: 7; }
-        .point.selected { fill: var(--accent); stroke: var(--white); r: 6; }
-        .segment { stroke: var(--black); stroke-width: 2.5; fill: none; cursor: pointer; stroke-linecap: round; }
-        .circle-entity { stroke: var(--black); stroke-width: 2.5; fill: none; cursor: pointer; }
+        .axis { stroke: var(--axis); stroke-width: 1; pointer-events: none; }
+        .origin-point { fill: var(--origin); r: 5; stroke: white; stroke-width: 2; cursor: pointer; }
+        .origin-point.selected { fill: var(--accent); r: 7; }
+        .point { fill: var(--white); stroke: var(--black); stroke-width: 1.5; cursor: pointer; }
+        .point.selected { fill: var(--accent); stroke: var(--accent); r: 5; }
+        .segment { stroke: var(--black); stroke-width: 2; fill: none; cursor: pointer; }
+        .segment.selected { stroke: var(--accent); stroke-width: 3; }
         
-        /* Cotas */
         .dim-group { cursor: pointer; }
-        .dim-line { stroke: var(--dim-color); stroke-width: 1; opacity: 0.5; pointer-events: none; }
-        .dim-text { font-size: 11px; font-weight: 600; fill: var(--dim-color); user-select: none; font-family: 'Inter', sans-serif; }
-        .dim-text-bg { fill: white; opacity: 0.9; rx: 4; ry: 4; }
+        .dim-line { stroke: var(--dim-color); stroke-width: 1; opacity: 0.3; stroke-dasharray: 2; pointer-events: none; }
+        .dim-arc { fill: none; stroke: var(--dim-color); stroke-width: 1.2; pointer-events: none; }
+        .dim-text { font-size: 11px; font-weight: 700; fill: var(--dim-color); cursor: pointer; user-select: none; transition: fill 0.3s; }
+        .dim-text-bg { fill: white; opacity: 0.9; pointer-events: none; }
+
+        .conflict .dim-line, .conflict .dim-arc { stroke: var(--dim-conflict) !important; opacity: 0.8; }
+        .conflict .dim-text { fill: var(--dim-conflict) !important; }
+
+        .mode-trim .dim-group:hover .dim-line, 
+        .mode-trim .dim-group:hover .dim-arc { 
+            stroke: var(--delete) !important; 
+        }
 
         #dim-modal {
             position: absolute;
             display: none;
             background: white;
-            padding: 12px;
-            border-radius: var(--radius);
+            padding: 10px;
+            border-radius: 8px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.1);
             border: 1px solid var(--axis);
             z-index: 1000;
         }
-        #dim-modal input { width: 80px; padding: 6px; border: 1px solid #DDD; border-radius: 6px; outline: none; }
-        #dim-modal input:focus { border-color: var(--accent); }
+        #dim-modal input {
+            width: 70px;
+            padding: 6px;
+            border: 1px solid #DEE2E6;
+            border-radius: 4px;
+            font-size: 13px;
+            outline: none;
+        }
 
-        .ghost { stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 6, 4; opacity: 0.5; fill: none; pointer-events: none; }
-        
-        .instructions {
+        .zoom-info {
             position: absolute;
-            bottom: 20px;
-            left: 20px;
+            bottom: 10px;
+            right: 10px;
             background: rgba(255,255,255,0.8);
-            padding: 8px 12px;
-            border-radius: 8px;
-            font-size: 11px;
-            color: var(--gray);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            pointer-events: none;
+            border: 1px solid var(--axis);
+        }
+
+        .status-msg {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #FFFBE6;
+            border: 1px solid #FFE58F;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            display: none;
+            color: #856404;
+            z-index: 10;
+        }
+
+        /* Ghost line for visual feedback */
+        .ghost-line {
+            stroke: var(--black);
+            stroke-width: 1;
+            stroke-dasharray: 4;
+            opacity: 0.5;
             pointer-events: none;
         }
     </style>
 </head>
 <body>
 
-<header><h1>Mini CAD 2D Pro</h1></header>
+<header>
+    <h1>Mini CAD 2D Inteligente</h1>
+</header>
 
 <div class="toolbar">
-    <button class="btn active" id="btn-line" onclick="setMode('LINE')"><span>&#9998;</span> Línea</button>
-    <button class="btn" id="btn-rect" onclick="setMode('RECT')"><span>&#9645;</span> Rect</button>
-    <button class="btn" id="btn-circle" onclick="setMode('CIRCLE')"><span>&#9675;</span> Círculo</button>
-    <div class="divider"></div>
-    <button class="btn" id="btn-select" onclick="setMode('SELECT')"><span>&#10148;</span> Select</button>
-    <button class="btn" id="btn-dim" onclick="setMode('DIM')"><span>&#8616;</span> Cota</button>
+    <button class="btn active" id="btn-line" onclick="setMode('LINE')"><span>&#9998;</span> Linea</button>
+    <button class="btn" id="btn-select" onclick="setMode('SELECT')"><span>&#10148;</span> Seleccion</button>
     <button class="btn" id="btn-trim" onclick="setMode('TRIM')"><span>&#9986;</span> Cortar</button>
     <div class="divider"></div>
-    <button class="btn" onclick="undo()"><span>&#8630;</span> Deshacer</button>
-    <button class="btn" onclick="redo()"><span>&#8631;</span> Rehacer</button>
+    <button class="btn" onclick="undo()"><span>&#8630;</span></button>
+    <button class="btn" onclick="redo()"><span>&#8631;</span></button>
     <div class="divider"></div>
-    <button class="btn" onclick="applyConstraint('HORIZ')">H</button>
-    <button class="btn" onclick="applyConstraint('VERT')">V</button>
-    <button class="btn" onclick="applyConstraint('COINCIDENT')">Mover a Coincidencia</button>
+    <button class="btn" onclick="resetView()"><span>&#8982;</span> Ajustar</button>
+    <button class="btn" id="btn-move" onclick="setMode('MOVE')"><span>&#9995;</span> Mover</button>
     <div class="divider"></div>
-    <button class="btn" style="color:var(--origin)" onclick="clearCanvas()">Limpiar</button>
+    <button class="btn" onclick="applyConstraintAction('HORIZ')"><span>&#9644;</span> Horiz</button>
+    <button class="btn" onclick="applyConstraintAction('VERT')"><span>&#9646;</span> Vert</button>
+    <button class="btn" onclick="applyConstraintAction('COINC')"><span>&#9903;</span> Coincidir</button>
+    <div class="divider"></div>
+    <button class="btn" id="btn-dim_dist" onclick="setMode('DIM_DIST')"><span>&#8616;</span> Cota Dist</button>
+    <button class="btn" id="btn-dim_ang" onclick="setMode('DIM_ANG')"><span>&#8736;</span> Cota Ang</button>
+    <div class="divider"></div>
+    <button class="btn btn-danger" onclick="clearCanvas()"><span>&#10005;</span> Limpiar</button>
 </div>
 
 <div id="viewport-container">
-    <div id="dim-modal"><input type="number" id="dim-input" step="any"></div>
-    <div class="instructions">Scroll: Zoom | Click Derecho: Pan | Click: Dibujar</div>
+    <div id="status-box" class="status-msg"></div>
+    <div id="dim-modal">
+        <input type="number" id="dim-input" step="any">
+    </div>
+    <div class="zoom-info" id="zoom-label">Zoom: 100%</div>
     <svg id="canvas">
         <g id="main-transform">
             <g id="grid-layer"></g>
             <g id="entities-layer"></g>
             <g id="ui-layer">
-                <line id="ghost-line" class="ghost" style="display:none"></line>
-                <rect id="ghost-rect" class="ghost" style="display:none"></rect>
-                <circle id="ghost-circle" class="ghost" style="display:none"></circle>
+                <line id="ghost-line" class="ghost-line" x1="0" y1="0" x2="0" y2="0" style="display:none;"></line>
             </g>
         </g>
     </svg>
 </div>
 
 <script>
-    // --- Modelado ---
     class Point {
         constructor(x, y, isOrigin = false) {
             this.x = x; this.y = y;
@@ -179,399 +217,569 @@
         constructor(p1, p2) {
             this.p1 = p1; this.p2 = p2;
             this.id = Math.random().toString(36).substr(2, 9);
-            this.type = 'SEGMENT';
         }
         length() { return Math.hypot(this.p2.x - this.p1.x, this.p2.y - this.p1.y); }
-    }
-
-    class Circle {
-        constructor(center, radius) {
-            this.center = center; this.radius = radius;
-            this.id = Math.random().toString(36).substr(2, 9);
-            this.type = 'CIRCLE';
-        }
+        angle() { return Math.atan2(this.p2.y - this.p1.y, this.p2.x - this.p1.x); }
     }
 
     class Constraint {
-        constructor(type, targets, value = null, subType = 'ALIGNED') {
-            this.type = type; // DIST, HORIZ, VERT, COINCIDENT
+        constructor(type, targets, value = null, targetType = 'SEGMENT', subType = 'ALIGNED') {
+            this.type = type; 
             this.targets = targets; 
-            this.value = value;
+            this.targetType = targetType;
             this.subType = subType;
+            this.value = value;
             this.id = Math.random().toString(36).substr(2, 9);
-            this.offsetX = 40; this.offsetY = 40;
+            this.offsetX = 0;
+            this.offsetY = 0;
+            this.isConflicting = false;
         }
     }
 
-    // --- Estado ---
     let points = [];
     let segments = [];
-    let circles = [];
     let constraints = [];
-    let undoStack = [], redoStack = [];
-    
-    let scale = 1.0, panX = 0, panY = 0;
+    let undoStack = [];
+    let redoStack = [];
+
+    let scale = 1.0;
+    let panX = 0;
+    let panY = 0;
+    let isPanning = false;
+
     const originPoint = new Point(0, 0, true);
-    let mode = 'LINE';
+    let mode = 'LINE'; 
     let activePoint = null;
-    let dragTarget = null, dimDragTarget = null, panning = false;
-    let selectedIds = [];
+    let dragTarget = null;
+    let dragStartPos = { x: 0, y: 0 };
+    let pointsInitialPos = new Map();
+    let dimDragTarget = null;
+    let selectedPointIds = []; 
+    let selectedSegmentIds = [];
+    let selectionBuffer = []; 
+    let originSelected = false;
     
+    const SNAP_DIST = 15;
     const canvas = document.getElementById('canvas');
     const mainTransform = document.getElementById('main-transform');
     const entitiesLayer = document.getElementById('entities-layer');
+    const gridLayer = document.getElementById('grid-layer');
     const uiLayer = document.getElementById('ui-layer');
+    const ghostLine = document.getElementById('ghost-line');
     const dimModal = document.getElementById('dim-modal');
     const dimInput = document.getElementById('dim-input');
+    const zoomLabel = document.getElementById('zoom-label');
+    const statusBox = document.getElementById('status-box');
 
-    // --- Historia ---
     function saveState() {
-        const state = JSON.stringify({ points, segments, circles, constraints });
+        const state = JSON.stringify({ 
+            points, 
+            segments: segments.map(s => ({p1Id: s.p1.id, p2Id: s.p2.id, id: s.id})), 
+            constraints 
+        });
         undoStack.push(state);
-        if(undoStack.length > 50) undoStack.shift();
         redoStack = [];
     }
-    function undo() { if (undoStack.length > 0) { redoStack.push(JSON.stringify({ points, segments, circles, constraints })); loadState(undoStack.pop()); } }
-    function redo() { if (redoStack.length > 0) { undoStack.push(JSON.stringify({ points, segments, circles, constraints })); loadState(redoStack.pop()); } }
+
+    function undo() { if (undoStack.length > 0) { redoStack.push(JSON.stringify({ points, segments: segments.map(s => ({p1Id: s.p1.id, p2Id: s.p2.id, id: s.id})), constraints })); loadState(undoStack.pop()); } }
+    function redo() { if (redoStack.length > 0) { undoStack.push(JSON.stringify({ points, segments: segments.map(s => ({p1Id: s.p1.id, p2Id: s.p2.id, id: s.id})), constraints })); loadState(redoStack.pop()); } }
+
     function loadState(json) {
-        const d = JSON.parse(json);
-        points = d.points.map(p => Object.assign(new Point(p.x, p.y, p.isOrigin), p));
-        const findP = (id) => id === 'ORIGIN' ? originPoint : points.find(p => p.id === id);
-        segments = d.segments.map(s => {
-            const ns = new Segment(findP(s.p1.id), findP(s.p2.id));
-            ns.id = s.id; return ns;
+        const data = JSON.parse(json);
+        points = data.points.map(p => { 
+            if(p.id === 'ORIGIN') return originPoint;
+            let np = new Point(p.x, p.y); np.id = p.id; return np; 
         });
-        circles = d.circles.map(c => {
-            const nc = new Circle(findP(c.center.id), c.radius);
-            nc.id = c.id; return nc;
+        segments = data.segments.map(s => {
+            const seg = new Segment(
+                s.p1Id === 'ORIGIN' ? originPoint : points.find(p => p.id === s.p1Id),
+                s.p2Id === 'ORIGIN' ? originPoint : points.find(p => p.id === s.p2Id)
+            );
+            seg.id = s.id; return seg;
         });
-        constraints = d.constraints;
+        constraints = data.constraints;
+        selectedPointIds = [];
+        selectedSegmentIds = [];
+        originSelected = false;
         render();
     }
 
-    // --- Solver ---
     function solve() {
-        const iterations = 100;
-        const damping = 0.5;
+        const iterations = 120;
+        const damping = 0.6;
+        let totalError = 0;
+
+        constraints.forEach(c => c.isConflicting = false);
+
         for (let i = 0; i < iterations; i++) {
+            totalError = 0;
             constraints.forEach(c => {
+                let error = 0;
                 if (c.type === 'DIST') {
-                    const s = segments.find(seg => seg.id === c.targets[0]);
-                    if (s) applyDist(s.p1, s.p2, c, damping);
-                    const circ = circles.find(ci => ci.id === c.targets[0]);
-                    if (circ) circ.radius = c.value / 2;
-                } else if (c.type === 'HORIZ' || c.type === 'VERT') {
-                    const s = segments.find(seg => seg.id === c.targets[0]);
-                    if (s) applyOrient(s, c.type, damping);
-                } else if (c.type === 'COINCIDENT') {
-                    const p1 = points.find(p => p.id === c.targets[0]) || (c.targets[0] === 'ORIGIN' ? originPoint : null);
-                    const p2 = points.find(p => p.id === c.targets[1]) || (c.targets[1] === 'ORIGIN' ? originPoint : null);
-                    if (p1 && p2) {
-                        const mx = (p1.x + p2.x)/2, my = (p1.y + p2.y)/2;
-                        if(!p1.isOrigin) { p1.x += (mx - p1.x)*damping; p1.y += (my - p1.y)*damping; }
-                        if(!p2.isOrigin) { p2.x += (mx - p2.x)*damping; p2.y += (my - p2.y)*damping; }
+                    let p1, p2;
+                    if (c.targetType === 'SEGMENT') {
+                        const s = segments.find(seg => seg.id === c.targets[0]);
+                        if (s) { p1 = s.p1; p2 = s.p2; }
+                    } else {
+                        p1 = c.targets[0] === 'ORIGIN' ? originPoint : points.find(p => p.id === c.targets[0]);
+                        p2 = c.targets[1] === 'ORIGIN' ? originPoint : points.find(p => p.id === c.targets[1]);
                     }
+                    if (p1 && p2) error = applyDistanceConstraint(p1, p2, c, damping);
+                }
+                else if (c.type === 'HORIZ' || c.type === 'VERT') {
+                    const s = segments.find(seg => seg.id === c.targets[0]);
+                    if (s) error = applyOrientationConstraint(s, c.type, damping);
+                }
+                else if (c.type === 'ANGLE') {
+                    error = applyAngleConstraint(c, damping);
+                }
+                totalError += error;
+
+                if (i === iterations - 1 && error > 0.5) {
+                    c.isConflicting = true;
                 }
             });
+            if (totalError < 0.0001) break;
         }
+
+        const hasConflict = constraints.some(c => c.isConflicting);
+        statusBox.style.display = hasConflict ? 'block' : 'none';
+        if(hasConflict) statusBox.innerText = "¡Sobredimensionamiento! Revisa las cotas en rojo.";
+
         render();
     }
 
-    function applyDist(p1, p2, c, dmp) {
+    function applyDistanceConstraint(p1, p2, c, damping) {
         const dx = p2.x - p1.x, dy = p2.y - p1.y;
-        const dist = Math.hypot(dx, dy) || 1;
+        const dist = Math.hypot(dx, dy);
+        let error = 0;
+        
         if (c.subType === 'ALIGNED') {
-            const diff = (dist - c.value) / dist * 0.5 * dmp;
+            if (dist < 0.001) return 0;
+            error = Math.abs(dist - c.value);
+            const diff = (dist - c.value) / dist * 0.5 * damping;
             if(!p1.isOrigin) { p1.x += dx * diff; p1.y += dy * diff; }
             if(!p2.isOrigin) { p2.x -= dx * diff; p2.y -= dy * diff; }
         } else if (c.subType === 'HORIZONTAL') {
-            const diff = (Math.abs(dx) - c.value) * (dx > 0 ? 1 : -1) * 0.5 * dmp;
+            const cur = Math.abs(dx);
+            error = Math.abs(cur - c.value);
+            const diff = (cur - c.value) * 0.5 * (dx > 0 ? 1 : -1) * damping;
             if(!p1.isOrigin) p1.x -= diff;
             if(!p2.isOrigin) p2.x += diff;
         } else if (c.subType === 'VERTICAL') {
-            const diff = (Math.abs(dy) - c.value) * (dy > 0 ? 1 : -1) * 0.5 * dmp;
+            const cur = Math.abs(dy);
+            error = Math.abs(cur - c.value);
+            const diff = (cur - c.value) * 0.5 * (dy > 0 ? 1 : -1) * damping;
             if(!p1.isOrigin) p1.y -= diff;
             if(!p2.isOrigin) p2.y += diff;
         }
+        return error;
     }
 
-    function applyOrient(s, type, dmp) {
+    function applyOrientationConstraint(s, type, damping) {
+        let error = 0;
         if (type === 'HORIZ') {
-            const err = (s.p2.y - s.p1.y) * 0.5 * dmp;
-            if(!s.p1.isOrigin) s.p1.y += err;
-            if(!s.p2.isOrigin) s.p2.y -= err;
+            const midY = (s.p1.y + s.p2.y) / 2;
+            const d1 = (midY - s.p1.y) * damping;
+            const d2 = (midY - s.p2.y) * damping;
+            if(!s.p1.isOrigin) s.p1.y += d1;
+            if(!s.p2.isOrigin) s.p2.y += d2;
+            error = Math.abs(s.p1.y - s.p2.y);
         } else {
-            const err = (s.p2.x - s.p1.x) * 0.5 * dmp;
-            if(!s.p1.isOrigin) s.p1.x += err;
-            if(!s.p2.isOrigin) s.p2.x -= err;
+            const midX = (s.p1.x + s.p2.x) / 2;
+            const d1 = (midX - s.p1.x) * damping;
+            const d2 = (midX - s.p2.x) * damping;
+            if(!s.p1.isOrigin) s.p1.x += d1;
+            if(!s.p2.isOrigin) s.p2.x += d2;
+            error = Math.abs(s.p1.x - s.p2.x);
         }
+        return error;
     }
 
-    // --- Herramientas de Dibujo ---
+    function applyAngleConstraint(c, damping) {
+        const s1 = segments.find(s => s.id === c.targets[0]);
+        const s2 = segments.find(s => s.id === c.targets[1]);
+        if (!s1 || !s2) return 0;
+        
+        let vertex, pA, pB;
+        if (s1.p1 === s2.p1) { vertex = s1.p1; pA = s1.p2; pB = s2.p2; }
+        else if (s1.p1 === s2.p2) { vertex = s1.p1; pA = s1.p2; pB = s2.p1; }
+        else if (s1.p2 === s2.p1) { vertex = s1.p2; pA = s1.p1; pB = s2.p2; }
+        else if (s1.p2 === s2.p2) { vertex = s1.p2; pA = s1.p1; pB = s2.p1; }
+        if (!vertex) return 0;
+
+        const angA = Math.atan2(pA.y - vertex.y, pA.x - vertex.x);
+        const angB = Math.atan2(pB.y - vertex.y, pB.x - vertex.x);
+        
+        let diff = angB - angA;
+        while (diff <= -Math.PI) diff += 2 * Math.PI;
+        while (diff > Math.PI) diff -= 2 * Math.PI;
+
+        const currentVal = Math.abs(diff);
+        const targetRad = (c.value * Math.PI) / 180;
+        const errorRad = (targetRad - currentVal);
+        
+        const step = errorRad * damping * 0.5 * (diff < 0 ? -1 : 1);
+
+        if(!pA.isOrigin) {
+            const rA = Math.hypot(pA.x - vertex.x, pA.y - vertex.y);
+            const newAngA = angA - step;
+            pA.x = vertex.x + rA * Math.cos(newAngA);
+            pA.y = vertex.y + rA * Math.sin(newAngA);
+        }
+        if(!pB.isOrigin) {
+            const rB = Math.hypot(pB.x - vertex.x, pB.y - vertex.y);
+            const newAngB = angB + step;
+            pB.x = vertex.x + rB * Math.cos(newAngB);
+            pB.y = vertex.y + rB * Math.sin(newAngB);
+        }
+
+        return Math.abs(errorRad * 180 / Math.PI);
+    }
+
     function getCoords(e) {
-        const r = canvas.getBoundingClientRect();
-        return { x: (e.clientX - r.left - r.width/2 - panX)/scale, y: (e.clientY - r.top - r.height/2 - panY)/scale };
+        const rect = canvas.getBoundingClientRect();
+        return {
+            x: (e.clientX - rect.left - panX - rect.width / 2) / scale,
+            y: (e.clientY - rect.top - panY - rect.height / 2) / scale
+        };
     }
 
     function findSnap(coords) {
-        const snapRadius = 15 / scale;
-        const allPoints = points.concat(originPoint);
-        const p = allPoints.find(p => Math.hypot(p.x - coords.x, p.y - coords.y) < snapRadius);
-        return p || coords;
+        if (Math.hypot(coords.x - originPoint.x, coords.y - originPoint.y) < SNAP_DIST / scale) return originPoint;
+        const hit = points.find(p => Math.hypot(p.x - coords.x, p.y - coords.y) < SNAP_DIST / scale);
+        return hit || coords;
     }
 
-    // --- Eventos ---
+    canvas.onwheel = (e) => {
+        e.preventDefault();
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left - rect.width / 2;
+        const my = e.clientY - rect.top - rect.height / 2;
+        const factor = e.deltaY > 0 ? 0.9 : 1.1;
+        const newScale = Math.min(Math.max(scale * factor, 0.05), 50);
+        panX = mx - (mx - panX) * (newScale / scale);
+        panY = my - (my - panY) * (newScale / scale);
+        scale = newScale;
+        zoomLabel.innerText = `Zoom: ${Math.round(scale * 100)}%`;
+        render();
+    };
+
+    // Close line tool on escape key
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            activePoint = null;
+            ghostLine.style.display = 'none';
+            render();
+        }
+    });
+
     canvas.onmousedown = (e) => {
-        if (e.button === 2) { panning = true; return; }
+        if (e.button === 1 || e.button === 2 || mode === 'MOVE') { isPanning = true; return; }
         const coords = getCoords(e);
         const snap = findSnap(coords);
         dimModal.style.display = 'none';
 
+        const constraintHit = findConstraintAt(e);
+        if (constraintHit && mode === 'SELECT') {
+            dimDragTarget = constraintHit;
+            e.stopPropagation();
+            return;
+        }
+
         if (mode === 'LINE') {
             saveState();
-            const p = (snap instanceof Point) ? snap : new Point(snap.x, snap.y);
+            let p = (snap instanceof Point) ? snap : new Point(snap.x, snap.y);
             if (!(snap instanceof Point)) points.push(p);
-            if (!activePoint) activePoint = p;
-            else {
-                if(activePoint.id !== p.id) segments.push(new Segment(activePoint, p));
+            
+            if (!activePoint) {
                 activePoint = p;
-            }
-        } else if (mode === 'RECT') {
-            saveState();
-            const p = (snap instanceof Point) ? snap : new Point(snap.x, snap.y);
-            if (!(snap instanceof Point)) points.push(p);
-            activePoint = p;
-        } else if (mode === 'CIRCLE') {
-            saveState();
-            const p = (snap instanceof Point) ? snap : new Point(snap.x, snap.y);
-            if (!(snap instanceof Point)) points.push(p);
-            activePoint = p;
-        } else if (mode === 'DIM') {
-            const target = findSegmentAt(coords) || findCircleAt(coords);
-            if (target) {
-                saveState();
-                const initialVal = target.type === 'CIRCLE' ? target.radius * 2 : target.length();
-                const c = new Constraint('DIST', [target.id], initialVal);
-                constraints.push(c);
-                dimDragTarget = c;
-            }
-        } else if (mode === 'SELECT') {
-            const dim = findDimAt(e);
-            if (dim) { dimDragTarget = dim; return; }
-            if (snap instanceof Point) { 
-                dragTarget = snap; 
-                if(!e.shiftKey) selectedIds = [snap.id];
-                else selectedIds.push(snap.id);
             } else {
-                selectedIds = [];
+                if (activePoint !== p) {
+                    segments.push(new Segment(activePoint, p));
+                    // Continuar desde el punto recién creado
+                    activePoint = p;
+                }
             }
-        } else if (mode === 'TRIM') {
-            const s = findSegmentAt(coords);
-            if (s) { saveState(); segments = segments.filter(x => x.id !== s.id); }
-            const ci = findCircleAt(coords);
-            if (ci) { saveState(); circles = circles.filter(x => x.id !== ci.id); }
+        } 
+        else if (mode === 'SELECT') {
+            const pointHit = (snap instanceof Point) ? snap : null;
+            const segHit = pointHit ? null : findSegmentAt(coords);
+            if (pointHit) {
+                if(pointHit.isOrigin) originSelected = !originSelected;
+                else {
+                    if (!selectedPointIds.includes(pointHit.id)) selectedPointIds.push(pointHit.id);
+                    dragTarget = pointHit;
+                    dragStartPos = { ...coords };
+                    pointsInitialPos.clear();
+                    selectedPointIds.forEach(id => {
+                        const p = points.find(pt => pt.id === id);
+                        if (p) pointsInitialPos.set(id, { x: p.x, y: p.y });
+                    });
+                }
+            } else if (segHit) {
+                if (!selectedSegmentIds.includes(segHit.id)) selectedSegmentIds.push(segHit.id);
+            } else {
+                selectedPointIds = []; selectedSegmentIds = []; originSelected = false;
+            }
+        } 
+        else if (mode === 'TRIM') {
+            const hit = findConstraintAt(e) || findSegmentAt(coords) || ((snap instanceof Point && !snap.isOrigin) ? snap : null);
+            if (hit) {
+                saveState();
+                if (hit instanceof Constraint) constraints = constraints.filter(c => c.id !== hit.id);
+                else if (hit instanceof Segment) {
+                    segments = segments.filter(s => s.id !== hit.id);
+                    [hit.p1, hit.p2].forEach(p => { if(!p.isOrigin && !segments.some(s=>s.p1===p||s.p2===p)) points = points.filter(pt=>pt!==p); });
+                } else {
+                    segments = segments.filter(s => s.p1 !== hit && s.p2 !== hit);
+                    points = points.filter(p => p !== hit);
+                }
+                solve();
+            }
+        }
+        else if (mode === 'DIM_DIST') {
+            const hit = (snap instanceof Point) ? snap : findSegmentAt(coords);
+            if (hit) selectionBuffer.push(hit);
+            if (selectionBuffer.length === 1 && selectionBuffer[0] instanceof Segment) {
+                saveState();
+                const c = new Constraint('DIST', [selectionBuffer[0].id], selectionBuffer[0].length(), 'SEGMENT');
+                c.offsetY = -40;
+                constraints.push(c);
+                selectionBuffer = [];
+                solve();
+            } else if (selectionBuffer.length === 2) {
+                saveState();
+                const p1 = selectionBuffer[0], p2 = selectionBuffer[1];
+                const c = new Constraint('DIST', [p1.id, p2.id], Math.hypot(p2.x-p1.x, p2.y-p1.y), 'POINT_PAIR');
+                c.offsetY = -40;
+                constraints.push(c);
+                selectionBuffer = [];
+                solve();
+            }
+        }
+        else if (mode === 'DIM_ANG') {
+            const seg = findSegmentAt(coords);
+            if (seg) selectionBuffer.push(seg.id);
+            if (selectionBuffer.length === 2) {
+                const s1 = segments.find(s => s.id === selectionBuffer[0]);
+                const s2 = segments.find(s => s.id === selectionBuffer[1]);
+                if (s1 && s2 && hasCommonPoint(s1, s2)) {
+                    saveState();
+                    const a1 = s1.angle(), a2 = s2.angle();
+                    let diff = Math.abs(a2 - a1) * 180 / Math.PI;
+                    while (diff > 180) diff = 360 - diff;
+                    constraints.push(new Constraint('ANGLE', [s1.id, s2.id], diff));
+                }
+                selectionBuffer = [];
+                solve();
+            }
         }
         render();
     };
 
-    canvas.onmousemove = (e) => {
-        if (panning) { panX += e.movementX; panY += e.movementY; render(); return; }
-        const coords = getCoords(e);
-        const snap = findSnap(coords);
-
-        if (activePoint) {
-            if (mode === 'LINE') {
-                const gl = document.getElementById('ghost-line');
-                gl.style.display = 'block';
-                gl.setAttribute('x1', activePoint.x); gl.setAttribute('y1', activePoint.y);
-                gl.setAttribute('x2', snap.x); gl.setAttribute('y2', snap.y);
-            } else if (mode === 'RECT') {
-                const gr = document.getElementById('ghost-rect');
-                gr.style.display = 'block';
-                gr.setAttribute('x', Math.min(activePoint.x, snap.x));
-                gr.setAttribute('y', Math.min(activePoint.y, snap.y));
-                gr.setAttribute('width', Math.abs(snap.x - activePoint.x));
-                gr.setAttribute('height', Math.abs(snap.y - activePoint.y));
-            } else if (mode === 'CIRCLE') {
-                const gc = document.getElementById('ghost-circle');
-                gc.style.display = 'block';
-                gc.setAttribute('cx', activePoint.x); gc.setAttribute('cy', activePoint.y);
-                gc.setAttribute('r', Math.hypot(snap.x - activePoint.x, snap.y - activePoint.y));
-            }
-        }
-
-        if (dimDragTarget) {
-            const targetId = dimDragTarget.targets[0];
-            const s = segments.find(seg => seg.id === targetId);
-            const ci = circles.find(c => c.id === targetId);
-            if (s) {
-                const midX = (s.p1.x + s.p2.x)/2, midY = (s.p1.y + s.p2.y)/2;
-                dimDragTarget.offsetX = coords.x - midX;
-                dimDragTarget.offsetY = coords.y - midY;
-                // Lógica de alineación
-                const dx = Math.abs(dimDragTarget.offsetX), dy = Math.abs(dimDragTarget.offsetY);
-                if (dx > dy * 2) { dimDragTarget.subType = 'VERTICAL'; dimDragTarget.offsetY = 0; }
-                else if (dy > dx * 2) { dimDragTarget.subType = 'HORIZONTAL'; dimDragTarget.offsetX = 0; }
-                else { dimDragTarget.subType = 'ALIGNED'; }
-            } else if (ci) {
-                dimDragTarget.offsetX = coords.x - ci.center.x;
-                dimDragTarget.offsetY = coords.y - ci.center.y;
-            }
+    // Double click to finish LINE mode
+    canvas.ondblclick = (e) => {
+        if (mode === 'LINE') {
+            activePoint = null;
+            ghostLine.style.display = 'none';
             render();
         }
-
-        if (dragTarget) { dragTarget.x = coords.x; dragTarget.y = coords.y; solve(); }
     };
 
-    window.onmouseup = (e) => {
-        if (e.button === 2) { panning = false; return; }
+    window.onmousemove = (e) => {
+        if (isPanning) { panX += e.movementX; panY += e.movementY; render(); return; }
         const coords = getCoords(e);
         const snap = findSnap(coords);
-
-        if (activePoint) {
-            if (mode === 'RECT') {
-                const p2 = new Point(snap.x, activePoint.y);
-                const p3 = (snap instanceof Point) ? snap : new Point(snap.x, snap.y);
-                const p4 = new Point(activePoint.x, snap.y);
-                points.push(p2, p3, p4);
-                segments.push(new Segment(activePoint, p2), new Segment(p2, p3), new Segment(p3, p4), new Segment(p4, activePoint));
-                activePoint = null;
-            } else if (mode === 'CIRCLE') {
-                const r = Math.hypot(snap.x - activePoint.x, snap.y - activePoint.y);
-                if (r > 2) circles.push(new Circle(activePoint, r));
-                activePoint = null;
-            }
+        
+        // Show ghost line for better UX in continuous mode
+        if (mode === 'LINE' && activePoint) {
+            ghostLine.style.display = 'block';
+            ghostLine.setAttribute('x1', activePoint.x);
+            ghostLine.setAttribute('y1', activePoint.y);
+            ghostLine.setAttribute('x2', snap.x);
+            ghostLine.setAttribute('y2', snap.y);
+        } else {
+            ghostLine.style.display = 'none';
         }
 
-        document.querySelectorAll('.ghost').forEach(g => g.style.display = 'none');
-        dimDragTarget = null; dragTarget = null;
-        render();
+        if (dimDragTarget && mode === 'SELECT') {
+            dimDragTarget.offsetX += e.movementX / scale;
+            dimDragTarget.offsetY += e.movementY / scale;
+            if (dimDragTarget.type === 'DIST') {
+                const ax = Math.abs(dimDragTarget.offsetX), ay = Math.abs(dimDragTarget.offsetY);
+                if (ax > 60 && ax > ay * 1.5) dimDragTarget.subType = 'VERTICAL';
+                else if (ay > 60 && ay > ax * 1.5) dimDragTarget.subType = 'HORIZONTAL';
+                else if (Math.hypot(dimDragTarget.offsetX, dimDragTarget.offsetY) < 30) dimDragTarget.subType = 'ALIGNED';
+            }
+            render();
+            return;
+        }
+
+        if (dragTarget && mode === 'SELECT') {
+            const dx = coords.x - dragStartPos.x, dy = coords.y - dragStartPos.y;
+            selectedPointIds.forEach(id => {
+                const p = points.find(pt => pt.id === id);
+                const init = pointsInitialPos.get(id);
+                if (p && init && !p.isOrigin) { p.x = init.x + dx; p.y = init.y + dy; }
+            });
+            solve();
+        }
     };
 
-    canvas.onwheel = (e) => {
-        e.preventDefault();
-        const zoomSpeed = 0.001;
-        const delta = -e.deltaY;
-        const oldScale = scale;
-        scale *= (1 + delta * zoomSpeed);
-        scale = Math.min(Math.max(0.1, scale), 20);
-        render();
-    };
+    window.onmouseup = () => { if(dragTarget) saveState(); dragTarget = null; dimDragTarget = null; isPanning = false; };
 
-    canvas.oncontextmenu = (e) => e.preventDefault();
-    canvas.ondblclick = () => { activePoint = null; render(); };
-
-    // --- Helpers Selección ---
-    function findSegmentAt(c) { return segments.find(s => distToSeg(c, s.p1, s.p2) < 10/scale); }
-    function findCircleAt(c) { return circles.find(ci => Math.abs(Math.hypot(c.x - ci.center.x, c.y - ci.center.y) - ci.radius) < 10/scale); }
-    function findDimAt(e) { const g = e.target.closest('.dim-group'); return g ? constraints.find(c => c.id === g.dataset.id) : null; }
-    
-    function distToSeg(p, v, w) {
-        const l2 = Math.pow(v.x-w.x, 2) + Math.pow(v.y-w.y, 2);
-        if (l2 === 0) return Math.hypot(p.x-v.x, p.y-v.y);
-        let t = Math.max(0, Math.min(1, ((p.x-v.x)*(w.x-v.x)+(p.y-v.y)*(w.y-v.y))/l2));
-        return Math.hypot(p.x - (v.x + t*(w.x-v.x)), p.y - (v.y + t*(w.y-v.y)));
-    }
+    function resetView() { scale = 1.0; panX = 0; panY = 0; zoomLabel.innerText = `Zoom: 100%`; render(); }
 
     function setMode(m) {
-        mode = m; activePoint = null;
+        mode = m;
         document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
-        const btn = document.getElementById('btn-' + m.toLowerCase());
-        if(btn) btn.classList.add('active');
+        const btnId = `btn-${m.toLowerCase()}`;
+        if(document.getElementById(btnId)) document.getElementById(btnId).classList.add('active');
+        document.getElementById('viewport-container').className = mode === 'TRIM' ? 'mode-trim' : '';
+        activePoint = null; selectionBuffer = [];
+        ghostLine.style.display = 'none';
+        render();
     }
 
-    function applyConstraint(type) {
-        if (type === 'COINCIDENT' && selectedIds.length === 2) {
+    function applyConstraintAction(type) {
+        setMode('SELECT');
+        if (type === 'HORIZ' || type === 'VERT') {
+            if (selectedSegmentIds.length === 0) return;
             saveState();
-            constraints.push(new Constraint('COINCIDENT', [...selectedIds]));
+            selectedSegmentIds.forEach(id => {
+                constraints = constraints.filter(c => !(c.targets[0] === id && (c.type === 'HORIZ' || c.type === 'VERT')));
+                constraints.push(new Constraint(type, [id]));
+            });
             solve();
-        } else if (segments.length > 0) {
+        } else if (type === 'COINC') {
+            const targets = [...selectedPointIds];
+            if (originSelected) targets.push('ORIGIN');
+            if (targets.length < 2) return;
             saveState();
-            const last = segments[segments.length - 1];
-            constraints.push(new Constraint(type, [last.id]));
+            const master = originSelected ? originPoint : points.find(p => p.id === targets[0]);
+            const others = targets.filter(id => id !== master.id);
+            segments.forEach(s => { if(others.includes(s.p1.id)) s.p1 = master; if(others.includes(s.p2.id)) s.p2 = master; });
+            points = points.filter(p => !others.includes(p.id));
+            selectedPointIds = master.isOrigin ? [] : [master.id];
             solve();
         }
     }
 
-    function openDimModal(e, c) {
+    function hasCommonPoint(s1, s2) { return s1.p1 === s2.p1 || s1.p1 === s2.p2 || s1.p2 === s2.p1 || s1.p2 === s2.p2; }
+    function findSegmentAt(coords) { return segments.find(s => distToSegment(coords, s.p1, s.p2) < 10 / scale); }
+    function findConstraintAt(e) { 
+        const el = e.target.closest('.dim-group'); 
+        return el ? constraints.find(c => c.id === el.getAttribute('data-id')) : null; 
+    }
+
+    function distToSegment(p, v, w) {
+        const l2 = Math.pow(v.x - w.x, 2) + Math.pow(v.y - w.y, 2);
+        if (l2 == 0) return Math.hypot(p.x - v.x, p.y - v.y);
+        let t = Math.max(0, Math.min(1, ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2));
+        return Math.hypot(p.x - (v.x + t * (w.x - v.x)), p.y - (v.y + t * (w.y - v.y)));
+    }
+
+    function openDimModal(e, constraint) {
+        if (mode === 'TRIM') return;
         e.stopPropagation();
         dimModal.style.display = 'block';
-        dimModal.style.left = e.clientX + 'px'; dimModal.style.top = e.clientY + 'px';
-        dimInput.value = Math.round(c.value * 100) / 100;
-        dimInput.onkeydown = (ev) => { if(ev.key === 'Enter') { saveState(); c.value = parseFloat(dimInput.value); dimModal.style.display = 'none'; solve(); }};
+        dimModal.style.left = e.clientX + 'px';
+        dimModal.style.top = e.clientY + 'px';
+        dimInput.value = Math.round(constraint.value * 100) / 100;
+        dimInput.onkeydown = (ev) => { if (ev.key === 'Enter') { 
+            let val = parseFloat(dimInput.value);
+            if (!isNaN(val) && val >= 0) { saveState(); constraint.value = val; dimModal.style.display = 'none'; solve(); }
+        }};
         dimInput.focus();
     }
 
-    function clearCanvas() { saveState(); points = []; segments = []; circles = []; constraints = []; render(); }
+    function clearCanvas() { saveState(); points = []; segments = []; constraints = []; selectedPointIds = []; selectedSegmentIds = []; originSelected = false; resetView(); render(); }
 
     function render() {
-        const r = canvas.getBoundingClientRect();
-        mainTransform.setAttribute("transform", `translate(${r.width/2 + panX}, ${r.height/2 + panY}) scale(${scale})`);
+        const rect = canvas.getBoundingClientRect();
+        mainTransform.setAttribute("transform", `translate(${panX + rect.width / 2}, ${panY + rect.height / 2}) scale(${scale})`);
+        entitiesLayer.innerHTML = ''; gridLayer.innerHTML = ''; uiLayer.innerHTML = '';
         
-        // Ejes
-        gridLayer.innerHTML = `<line x1="-5000" y1="0" x2="5000" y2="0" class="axis" /><line x1="0" y1="-5000" x2="0" y2="5000" class="axis" /><circle cx="0" cy="0" class="origin-point" />`;
-        entitiesLayer.innerHTML = ''; uiLayer.innerHTML = '';
+        const vSize = 20000;
+        gridLayer.innerHTML = `<line x1="${-vSize}" y1="0" x2="${vSize}" y2="0" class="axis" />
+                               <line x1="0" y1="${-vSize}" x2="0" y2="${vSize}" class="axis" />
+                               <circle cx="0" cy="0" class="origin-point ${originSelected ? 'selected' : ''}" />`;
 
-        segments.forEach(s => {
-            const el = document.createElementNS("http://www.w3.org/2000/svg", "line");
-            el.setAttribute("x1", s.p1.x); el.setAttribute("y1", s.p1.y); el.setAttribute("x2", s.p2.x); el.setAttribute("y2", s.p2.y);
-            el.setAttribute("class", "segment");
-            entitiesLayer.appendChild(el);
-        });
-
-        circles.forEach(ci => {
-            const el = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-            el.setAttribute("cx", ci.center.x); el.setAttribute("cy", ci.center.y); el.setAttribute("r", ci.radius);
-            el.setAttribute("class", "circle-entity");
-            entitiesLayer.appendChild(el);
+        segments.forEach(seg => {
+            const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            line.setAttribute("x1", seg.p1.x); line.setAttribute("y1", seg.p1.y);
+            line.setAttribute("x2", seg.p2.x); line.setAttribute("y2", seg.p2.y);
+            line.setAttribute("class", "segment " + (selectedSegmentIds.includes(seg.id) ? "selected" : ""));
+            entitiesLayer.appendChild(line);
         });
 
         constraints.forEach(c => {
-            if (c.type !== 'DIST') return;
-            const s = segments.find(seg => seg.id === c.targets[0]);
-            const ci = circles.find(circ => circ.id === c.targets[0]);
             const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
-            g.setAttribute("class", "dim-group"); g.dataset.id = c.id;
-            g.onclick = (e) => openDimModal(e, c);
+            g.setAttribute("class", "dim-group " + (c.isConflicting ? "conflict" : ""));
+            g.setAttribute("data-id", c.id);
+            g.ondblclick = (e) => openDimModal(e, c);
 
-            let tx, ty, lineMarkup = '';
-            if (s) {
-                const {p1, p2} = s;
-                const midX = (p1.x + p2.x)/2, midY = (p1.y + p2.y)/2;
-                tx = midX + c.offsetX; ty = midY + c.offsetY;
-                if (c.subType === 'ALIGNED') {
-                    lineMarkup = `<line x1="${p1.x}" y1="${p1.y}" x2="${p1.x+c.offsetX}" y2="${p1.y+c.offsetY}" class="dim-line" />
-                                  <line x1="${p2.x}" y1="${p2.y}" x2="${p2.x+c.offsetX}" y2="${p2.y+c.offsetY}" class="dim-line" />
-                                  <line x1="${p1.x+c.offsetX}" y1="${p1.y+c.offsetY}" x2="${p2.x+c.offsetX}" y2="${p2.y+c.offsetY}" stroke="var(--dim-color)" stroke-width="1.5" />`;
-                } else if (c.subType === 'HORIZONTAL') {
-                    lineMarkup = `<line x1="${p1.x}" y1="${p1.y}" x2="${p1.x}" y2="${ty}" class="dim-line" />
-                                  <line x1="${p2.x}" y1="${p2.y}" x2="${p2.x}" y2="${ty}" class="dim-line" />
-                                  <line x1="${p1.x}" y1="${ty}" x2="${p2.x}" y2="${ty}" stroke="var(--dim-color)" stroke-width="1.5" />`;
+            if (c.type === 'DIST') {
+                let p1, p2;
+                if (c.targetType === 'SEGMENT') { const s = segments.find(seg => seg.id === c.targets[0]); if(s){p1=s.p1;p2=s.p2;} }
+                else { p1 = c.targets[0]==='ORIGIN'?originPoint:points.find(p=>p.id===c.targets[0]); p2 = c.targets[1]==='ORIGIN'?originPoint:points.find(p=>p.id===c.targets[1]); }
+                if (!p1 || !p2) return;
+                
+                const midX = (p1.x + p2.x)/2 + c.offsetX, midY = (p1.y + p2.y)/2 + c.offsetY;
+                if(c.subType === 'HORIZONTAL') {
+                    g.innerHTML += `<line x1="${p1.x}" y1="${p1.y}" x2="${p1.x}" y2="${midY}" class="dim-line" />
+                                   <line x1="${p2.x}" y1="${p2.y}" x2="${p2.x}" y2="${midY}" class="dim-line" />
+                                   <line x1="${p1.x}" y1="${midY}" x2="${p2.x}" y2="${midY}" stroke="currentColor" stroke-width="${1.2/scale}"/>`;
+                } else if(c.subType === 'VERTICAL') {
+                    g.innerHTML += `<line x1="${p1.x}" y1="${p1.y}" x2="${midX}" y2="${p1.y}" class="dim-line" />
+                                   <line x1="${p2.x}" y1="${p2.y}" x2="${midX}" y2="${p2.y}" class="dim-line" />
+                                   <line x1="${midX}" y1="${p1.y}" x2="${midX}" y2="${p2.y}" stroke="currentColor" stroke-width="${1.2/scale}"/>`;
                 } else {
-                    lineMarkup = `<line x1="${p1.x}" y1="${p1.y}" x2="${tx}" y2="${p1.y}" class="dim-line" />
-                                  <line x1="${p2.x}" y1="${p2.y}" x2="${tx}" y2="${p2.y}" class="dim-line" />
-                                  <line x1="${tx}" y1="${p1.y}" x2="${tx}" y2="${p2.y}" stroke="var(--dim-color)" stroke-width="1.5" />`;
+                    const dx = p2.x - p1.x, dy = p2.y - p1.y, len = Math.hypot(dx, dy);
+                    const nx = -dy/len, ny = dx/len, d = 40 + c.offsetY;
+                    const x3 = p1.x + nx*d, y3 = p1.y + ny*d, x4 = p2.x + nx*d, y4 = p2.y + ny*d;
+                    g.innerHTML += `<line x1="${p1.x}" y1="${p1.y}" x2="${x3}" y2="${y3}" class="dim-line" />
+                                   <line x1="${p2.x}" y1="${p2.y}" x2="${x4}" y2="${y4}" class="dim-line" />
+                                   <line x1="${x3}" y1="${y3}" x2="${x4}" y2="${y4}" stroke="currentColor" stroke-width="${1.2/scale}"/>`;
                 }
-            } else if (ci) {
-                tx = ci.center.x + c.offsetX; ty = ci.center.y + c.offsetY;
-                lineMarkup = `<line x1="${ci.center.x}" y1="${ci.center.y}" x2="${tx}" y2="${ty}" class="dim-line" stroke-dasharray="2" />`;
+                g.innerHTML += `<rect x="${midX-20/scale}" y="${midY-10/scale}" width="${40/scale}" height="${20/scale}" rx="${4/scale}" class="dim-text-bg" />
+                               <text x="${midX}" y="${midY+5/scale}" class="dim-text" text-anchor="middle" style="font-size: ${11/scale}px">${Math.round(c.value * 10) / 10}</text>`;
+                uiLayer.appendChild(g);
+            } else if (c.type === 'ANGLE') {
+                const s1 = segments.find(s => s.id === c.targets[0]), s2 = segments.find(s => s.id === c.targets[1]);
+                if (!s1 || !s2) return;
+                let common, pt1, pt2;
+                if(s1.p1===s2.p1){common=s1.p1;pt1=s1.p2;pt2=s2.p2} else if(s1.p1===s2.p2){common=s1.p1;pt1=s1.p2;pt2=s2.p1}
+                else if(s1.p2===s2.p1){common=s1.p2;pt1=s1.p1;pt2=s2.p2} else {common=s1.p2;pt1=s1.p1;pt2=s2.p1}
+                const a1 = Math.atan2(pt1.y-common.y, pt1.x-common.x), a2 = Math.atan2(pt2.y-common.y, pt2.x-common.x);
+                let diff = a2 - a1;
+                while (diff <= -Math.PI) diff += 2 * Math.PI;
+                while (diff > Math.PI) diff -= 2 * Math.PI;
+                const r = 40 / scale, sweep = diff > 0 ? 1 : 0;
+                const arcPath = `M ${common.x + r*Math.cos(a1)} ${common.y + r*Math.sin(a1)} A ${r} ${r} 0 0 ${sweep} ${common.x + r*Math.cos(a2)} ${common.y + r*Math.sin(a2)}`;
+                const tx = common.x + (r + (25+c.offsetX)/scale)*Math.cos(a1+diff/2), ty = common.y + (r + (25+c.offsetY)/scale)*Math.sin(a1+diff/2);
+                g.innerHTML = `<path d="${arcPath}" class="dim-arc" style="stroke-width: ${1.2/scale}" />
+                               <rect x="${tx-15/scale}" y="${ty-10/scale}" width="${30/scale}" height="${20/scale}" rx="${4/scale}" class="dim-text-bg" />
+                               <text x="${tx}" y="${ty+5/scale}" class="dim-text" text-anchor="middle" style="font-size: ${11/scale}px">${Math.round(c.value * 10) / 10}°</text>`;
+                uiLayer.appendChild(g);
             }
-
-            g.innerHTML = `${lineMarkup}
-                <rect x="${tx-20/scale}" y="${ty-10/scale}" width="${40/scale}" height="${20/scale}" class="dim-text-bg" />
-                <text x="${tx}" y="${ty + 4/scale}" class="dim-text" text-anchor="middle" style="font-size: ${12/scale}px">${Math.round(c.value)}</text>`;
-            uiLayer.appendChild(g);
         });
 
         points.forEach(p => {
-            if (p.isOrigin) return;
-            const el = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-            el.setAttribute("cx", p.x); el.setAttribute("cy", p.y); el.setAttribute("r", 5/scale);
-            el.setAttribute("class", "point " + (selectedIds.includes(p.id) ? "selected" : ""));
-            entitiesLayer.appendChild(el);
+            if(p.isOrigin) return;
+            const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            circle.setAttribute("cx", p.x); circle.setAttribute("cy", p.y); circle.setAttribute("r", 4 / scale);
+            circle.setAttribute("class", "point " + (selectedPointIds.includes(p.id) || selectionBuffer.some(b => b.id === p.id) || activePoint === p ? "selected" : ""));
+            circle.style.strokeWidth = (1.5 / scale) + "px";
+            entitiesLayer.appendChild(circle);
         });
+
+        // Ensure ghost line stays on top of grid but below UI/segments
+        uiLayer.appendChild(ghostLine);
     }
 
+    window.onresize = render;
     render();
 </script>
 </body>
