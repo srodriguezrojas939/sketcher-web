@@ -2,223 +2,323 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>RaizCuadra CAD - Pro Sketcher</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/paper.js/0.12.15/paper-full.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mini CAD 2D - Sketcher Matemático</title>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Open+Sans:wght@400;600&display=swap');
+
         :root {
-            --bg: #0d0d0d; --panel: #1a1a1a; --accent: #00ff41; 
-            --blue: #3b82f6; --black: #e0e0e0; --red: #ff4d4d;
+            --bg: #F2F2F2;
+            --white: #FFFFFF;
+            --black: #000000;
+            --gray: #666;
+            --accent: #2196F3;
         }
-        body { margin: 0; background: var(--bg); color: white; font-family: 'Courier New', monospace; display: flex; height: 100vh; overflow: hidden; }
-        
-        #sidebar { width: 280px; background: var(--panel); border-right: 1px solid #333; display: flex; flex-direction: column; padding: 15px; }
-        .tool-group { margin-bottom: 20px; }
-        .tool-group h3 { font-size: 12px; color: var(--accent); text-transform: uppercase; border-bottom: 1px solid #333; padding-bottom: 5px; }
-        .btn { width: 100%; background: transparent; border: 1px solid #444; color: #aaa; padding: 8px; margin: 4px 0; cursor: pointer; text-align: left; font-size: 11px; transition: 0.2s; }
-        .btn:hover { border-color: var(--accent); color: white; }
-        .btn.active { background: #333; border-color: var(--accent); color: var(--accent); }
-        
-        #viewport { flex-grow: 1; position: relative; cursor: crosshair; }
-        canvas { width: 100%; height: 100%; background: radial-gradient(#222 1px, transparent 1px); background-size: 30px 30px; }
-        
-        /* Editor Flotante (Como pediste, sin ventanas prompt) */
-        #dim-editor { 
-            position: absolute; display: none; background: var(--panel); 
-            border: 1px solid var(--accent); padding: 5px; 
-            box-shadow: 0 0 10px rgba(0,255,65,0.2); z-index: 100;
+
+        body {
+            margin: 0;
+            font-family: 'Open Sans', sans-serif;
+            background-color: var(--white);
+            color: var(--black);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
         }
-        #dim-editor input { background: black; border: 1px solid #444; color: var(--accent); width: 60px; text-align: center; outline: none; }
+
+        /* UI Estética anterior */
+        header {
+            padding: 20px;
+            text-align: center;
+            background: var(--bg);
+            border-bottom: 1px solid #ddd;
+        }
+
+        h1 { font-family: 'Playfair Display', serif; margin: 0; font-size: 28px; }
+        p.subtitle { font-family: 'Playfair Display', serif; font-weight: 700; margin: 5px 0 0; font-size: 14px; }
+
+        .toolbar {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            padding: 15px;
+            background: var(--white);
+            border-bottom: 1px solid #eee;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 50px;
+            border: 1px solid #ddd;
+            background: var(--white);
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.3s;
+            font-size: 13px;
+        }
+
+        .btn:hover { background: var(--bg); transform: translateY(-1px); }
+        .btn.active { background: var(--black); color: var(--white); border-color: var(--black); }
+
+        /* Área de Dibujo */
+        #viewport-container {
+            flex-grow: 1;
+            position: relative;
+            background-image: radial-gradient(#ddd 1px, transparent 1px);
+            background-size: 20px 20px;
+            cursor: crosshair;
+        }
+
+        svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .point { fill: var(--white); stroke: var(--black); stroke-width: 2; cursor: move; }
+        .point:hover { fill: var(--black); }
+        .segment { stroke: var(--black); stroke-width: 2; fill: none; }
+        .dimension-text { font-size: 12px; font-weight: 600; fill: var(--gray); cursor: pointer; user-select: none; }
+        .dimension-text:hover { fill: var(--black); text-decoration: underline; }
         
-        .status-bar { position: absolute; bottom: 0; left: 280px; right: 0; background: rgba(0,0,0,0.8); padding: 5px 15px; font-size: 10px; display: flex; gap: 20px; border-top: 1px solid #333; }
+        .snap-guide { fill: rgba(33, 150, 243, 0.3); stroke: var(--accent); stroke-dasharray: 2; }
+
+        .info-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.9);
+            padding: 15px;
+            border-radius: 15px;
+            border: 1px solid #ddd;
+            font-size: 12px;
+            max-width: 200px;
+        }
     </style>
 </head>
 <body>
 
-<div id="sidebar">
-    <div style="font-size: 18px; font-weight: bold; margin-bottom: 20px; color: var(--accent);">[RAIZ_CUADRA] CAD</div>
-    
-    <div class="tool-group">
-        <h3>Entidades</h3>
-        <button class="btn active" id="tool-line" onclick="setMode('LINE')">> LINEA</button>
-        <button class="btn" id="tool-rect" onclick="setMode('RECT')">> RECTANGULO</button>
-        <button class="btn" id="tool-circle" onclick="setMode('CIRCLE')">> CIRCULO</button>
-        <button class="btn" id="tool-trim" onclick="setMode('TRIM')">> RECORTAR</button>
-    </div>
+<header>
+    <h1>Mini CAD 2D</h1>
+    <p class="subtitle">Geometría Computacional</p>
+</header>
 
-    <div class="tool-group">
-        <h3>Dimensiones</h3>
-        <button class="btn" id="tool-dim" onclick="setMode('DIM')">> COTA INTELIGENTE</button>
-    </div>
-
-    <div id="constraint-info" style="font-size: 10px; color: #666; margin-top: auto;">
-        DOF: <span id="dof-count">0</span> | EJE: <span id="sketch-state">X,Y ACTIVOS</span>
-    </div>
+<div class="toolbar">
+    <button class="btn active" id="btn-line" onclick="setMode('LINE')">Dibujar Línea</button>
+    <button class="btn" id="btn-select" onclick="setMode('SELECT')">Mover / Editar</button>
+    <button class="btn" onclick="clearCanvas()">Limpiar</button>
+    <div style="border-left: 1px solid #ddd; margin: 0 10px;"></div>
+    <button class="btn" onclick="applyConstraint('HORIZ')">Horizontal</button>
+    <button class="btn" onclick="applyConstraint('VERT')">Vertical</button>
 </div>
 
-<div id="viewport">
-    <canvas id="cadCanvas" resize></canvas>
-    <div id="dim-editor"><input type="number" id="dim-input" placeholder="Val"></div>
-    <div class="status-bar">
-        <span style="color: var(--blue)">● SUBDEFINIDO</span>
-        <span style="color: var(--accent)">● DEFINIDO (ORIGEN/SNAP)</span>
+<div id="viewport-container">
+    <svg id="canvas">
+        </svg>
+    <div class="info-panel">
+        <strong>Guía:</strong><br>
+        1. Clic para puntos.<br>
+        2. Cierra polígonos haciendo clic en puntos existentes (Snap).<br>
+        3. Haz clic en los números para cambiar dimensiones.
     </div>
 </div>
 
 <script>
-paper.setup('cadCanvas');
-const { Path, Point, Color, Group, TextItem } = paper;
-
-// --- CONFIGURACIÓN DE EJES Y ORIGEN ---
-const origin = paper.view.center;
-const drawAxes = () => {
-    const axes = new Group();
-    const xLine = new Path.Line([0, origin.y], [paper.view.size.width, origin.y]);
-    const yLine = new Path.Line([origin.x + 140, 0], [origin.x + 140, paper.view.size.height]);
-    [xLine, yLine].forEach(l => {
-        l.strokeColor = '#333';
-        l.dashArray = [4, 4];
-    });
-    const centerPoint = new Path.Circle(new Point(origin.x + 140, origin.y), 5);
-    centerPoint.strokeColor = '#00ff41';
-    return centerPoint.position;
-};
-const realOrigin = drawAxes();
-
-// --- ESTADO ---
-let mode = 'LINE';
-let entities = [];
-let tempPath = null;
-let selectedForDim = null;
-
-function setMode(m) {
-    mode = m;
-    document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
-    document.getElementById('tool-' + m.toLowerCase())?.classList.add('active');
-}
-
-// --- COINCIDENCIA AUTOMÁTICA Y SNAP ---
-function getSnapPoint(point) {
-    const tolerance = 15;
-    if (point.getDistance(realOrigin) < tolerance) return realOrigin;
-    
-    for (let ent of entities) {
-        for (let seg of ent.segments) {
-            if (point.getDistance(seg.point) < tolerance) return seg.point;
+    // --- GEOMETRÍA ---
+    class Point {
+        constructor(x, y) {
+            this.x = x;
+            this.y = y;
+            this.id = Math.random().toString(36).substr(2, 9);
         }
     }
-    return point;
-}
 
-const tool = new paper.Tool();
-
-tool.onMouseDown = (event) => {
-    const snapPt = getSnapPoint(event.point);
-    const hit = paper.project.hitTest(event.point, { segments: true, stroke: true, tolerance: 10 });
-
-    if (mode === 'DIM' && hit && hit.item.data.type === 'segment') {
-        openDimEditor(hit.item, event.point);
-        return;
+    class Segment {
+        constructor(p1, p2) {
+            this.p1 = p1;
+            this.p2 = p2;
+            this.id = Math.random().toString(36).substr(2, 9);
+        }
+        length() {
+            return Math.sqrt(Math.pow(this.p2.x - this.p1.x, 2) + Math.pow(this.p2.y - this.p1.y, 2));
+        }
     }
 
-    if (mode === 'LINE') {
-        tempPath = new Path.Line(snapPt, snapPt);
-        tempPath.strokeColor = '#3b82f6';
-        tempPath.strokeWidth = 2;
-        tempPath.data.type = 'segment';
-    } else if (mode === 'RECT') {
-        tempPath = new Path.Rectangle(snapPt, new paper.Size(1,1));
-        tempPath.strokeColor = '#3b82f6';
-        tempPath.strokeWidth = 2;
-        tempPath.data.type = 'rect';
+    class Constraint {
+        constructor(type, targets, value = null) {
+            this.type = type; // 'DIST', 'HORIZ', 'VERT', 'ANGLE'
+            this.targets = targets; // IDs de segmentos o puntos
+            this.value = value;
+        }
     }
-};
 
-tool.onMouseDrag = (event) => {
-    if (!tempPath) return;
-    const snapPt = getSnapPoint(event.point);
-    
-    if (mode === 'LINE') {
-        tempPath.segments[1].point = snapPt;
-    } else if (mode === 'RECT') {
-        const rect = new paper.Rectangle(tempPath.bounds.topLeft, snapPt);
-        tempPath.remove();
-        tempPath = new Path.Rectangle(rect);
-        tempPath.strokeColor = '#3b82f6';
-        tempPath.data.type = 'rect';
+    // --- ESTADO ---
+    let points = [];
+    let segments = [];
+    let constraints = [];
+    let mode = 'LINE'; // 'LINE', 'SELECT'
+    let activePoint = null;
+    let dragTarget = null;
+    const SNAP_DIST = 15;
+
+    const svg = document.getElementById('canvas');
+
+    // --- SOLVER SIMPLE (RELAJACIÓN) ---
+    function solve() {
+        const iterations = 20;
+        for (let i = 0; i < iterations; i++) {
+            constraints.forEach(c => {
+                if (c.type === 'DIST') {
+                    const seg = segments.find(s => s.id === c.targets[0]);
+                    if (!seg) return;
+                    const dx = seg.p2.x - seg.p1.x;
+                    const dy = seg.p2.y - seg.p1.y;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist === 0) return;
+                    const diff = (dist - c.value) / dist * 0.5;
+                    const offsetX = dx * diff;
+                    const offsetY = dy * diff;
+                    
+                    // Solo movemos si no es el punto que el usuario está arrastrando
+                    if (seg.p1 !== dragTarget) { seg.p1.x += offsetX; seg.p1.y += offsetY; }
+                    if (seg.p2 !== dragTarget) { seg.p2.x -= offsetX; seg.p2.y -= offsetY; }
+                }
+                if (c.type === 'HORIZ') {
+                    const seg = segments.find(s => s.id === c.targets[0]);
+                    if (!seg) return;
+                    const midY = (seg.p1.y + seg.p2.y) / 2;
+                    if (seg.p1 !== dragTarget) seg.p1.y = midY;
+                    if (seg.p2 !== dragTarget) seg.p2.y = midY;
+                }
+                if (c.type === 'VERT') {
+                    const seg = segments.find(s => s.id === c.targets[0]);
+                    if (!seg) return;
+                    const midX = (seg.p1.x + seg.p2.x) / 2;
+                    if (seg.p1 !== dragTarget) seg.p1.x = midX;
+                    if (seg.p2 !== dragTarget) seg.p2.x = midX;
+                }
+            });
+        }
+        render();
     }
-};
 
-tool.onMouseUp = () => {
-    if (tempPath) {
-        entities.push(tempPath);
-        checkDefinitions();
-        tempPath = null;
+    // --- INTERACCIÓN ---
+    function getCoords(e) {
+        const rect = svg.getBoundingClientRect();
+        return { x: e.clientX - rect.left, y: e.clientY - rect.top };
     }
-};
 
-// --- EDITOR DE COTAS (SIN PROMPT) ---
-const editor = document.getElementById('dim-editor');
-const input = document.getElementById('dim-input');
-
-function openDimEditor(item, point) {
-    selectedForDim = item;
-    editor.style.display = 'block';
-    editor.style.left = (point.x + 10) + 'px';
-    editor.style.top = (point.y - 10) + 'px';
-    
-    const dist = item.segments[0].point.getDistance(item.segments[1].point);
-    input.value = Math.round(dist);
-    input.focus();
-}
-
-input.onkeydown = (e) => {
-    if (e.key === 'Enter') {
-        const newDist = parseFloat(input.value);
-        applyDimension(selectedForDim, newDist);
-        editor.style.display = 'none';
+    function findSnap(coords) {
+        return points.find(p => Math.sqrt(Math.pow(p.x - coords.x, 2) + Math.pow(p.y - coords.y, 2)) < SNAP_DIST);
     }
-};
 
-function applyDimension(path, val) {
-    const p1 = path.segments[0].point;
-    const p2 = path.segments[1].point;
-    const currentDist = p1.getDistance(p2);
-    const vector = p2.subtract(p1).normalize().multiply(val);
-    path.segments[1].point = p1.add(vector);
-    
-    // Crear Texto de Cota
-    const label = new TextItem({
-        point: p1.add(vector.divide(2)).add([0, -10]),
-        content: val,
-        fillColor: '#00ff41',
-        fontSize: 12
-    });
-    checkDefinitions();
-}
+    svg.onmousedown = (e) => {
+        const coords = getCoords(e);
+        const snap = findSnap(coords);
 
-// --- ARCO ANGULAR ---
-// Si se seleccionan dos líneas en modo DIM, se puede crear un arco.
-// Aquí simplificamos la lógica visual del arco.
-function drawAngleArc(line1, line2) {
-    const center = line1.segments[0].point; // Asumimos vértice común
-    const arc = new Path.Arc({
-        from: line1.segments[1].point,
-        through: line1.segments[1].point.add(line2.segments[1].point).divide(2),
-        to: line2.segments[1].point,
-        strokeColor: '#00ff41'
-    });
-}
+        if (mode === 'LINE') {
+            const p = snap || new Point(coords.x, coords.y);
+            if (!snap) points.push(p);
 
-function checkDefinitions() {
-    entities.forEach(ent => {
-        let defined = false;
-        ent.segments.forEach(s => {
-            if (s.point.getDistance(realOrigin) < 1) defined = true;
+            if (!activePoint) {
+                activePoint = p;
+            } else {
+                if (activePoint !== p) {
+                    const seg = new Segment(activePoint, p);
+                    segments.push(seg);
+                    // Añadimos cota automática inicial
+                    constraints.push(new Constraint('DIST', [seg.id], seg.length()));
+                }
+                activePoint = null;
+            }
+        } else if (mode === 'SELECT') {
+            if (snap) dragTarget = snap;
+        }
+        render();
+    };
+
+    window.onmousemove = (e) => {
+        if (!dragTarget) return;
+        const coords = getCoords(e);
+        dragTarget.x = coords.x;
+        dragTarget.y = coords.y;
+        solve();
+    };
+
+    window.onmouseup = () => { dragTarget = null; };
+
+    // --- LÓGICA DE UI ---
+    function setMode(m) {
+        mode = m;
+        document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(`btn-${m.toLowerCase()}`).classList.add('active');
+        activePoint = null;
+        render();
+    }
+
+    function applyConstraint(type) {
+        const lastSeg = segments[segments.length - 1];
+        if (!lastSeg) return;
+        constraints = constraints.filter(c => !(c.targets[0] === lastSeg.id && (c.type === 'HORIZ' || c.type === 'VERT')));
+        constraints.push(new Constraint(type, [lastSeg.id]));
+        solve();
+    }
+
+    function editDimension(segId) {
+        const newVal = prompt("Ingresa la nueva longitud:");
+        if (newVal && !isNaN(newVal)) {
+            const c = constraints.find(c => c.targets[0] === segId && c.type === 'DIST');
+            if (c) c.value = parseFloat(newVal);
+            solve();
+        }
+    }
+
+    function clearCanvas() {
+        points = []; segments = []; constraints = []; activePoint = null;
+        render();
+    }
+
+    // --- RENDERIZADO SVG ---
+    function render() {
+        svg.innerHTML = '';
+
+        // Dibujar Segmentos
+        segments.forEach(seg => {
+            const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            line.setAttribute("x1", seg.p1.x); line.setAttribute("y1", seg.p1.y);
+            line.setAttribute("x2", seg.p2.x); line.setAttribute("y2", seg.p2.y);
+            line.setAttribute("class", "segment");
+            svg.appendChild(line);
+
+            // Cota (Texto)
+            const midX = (seg.p1.x + seg.p2.x) / 2;
+            const midY = (seg.p1.y + seg.p2.y) / 2;
+            const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            text.setAttribute("x", midX); text.setAttribute("y", midY - 10);
+            text.setAttribute("class", "dimension-text");
+            text.setAttribute("text-anchor", "middle");
+            text.textContent = Math.round(seg.length());
+            text.onclick = (e) => { e.stopPropagation(); editDimension(seg.id); };
+            svg.appendChild(text);
         });
-        ent.strokeColor = defined ? '#00ff41' : '#3b82f6';
-    });
-}
 
+        // Dibujar Puntos
+        points.forEach(p => {
+            const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            circle.setAttribute("cx", p.x); circle.setAttribute("cy", p.y);
+            circle.setAttribute("r", 5);
+            circle.setAttribute("class", "point");
+            if (p === activePoint) circle.style.fill = "var(--accent)";
+            svg.appendChild(circle);
+        });
+
+        // Visualizar Ángulos si hay polígonos cerrados (Simplicado para triángulos)
+        // Nota: En un sistema real se buscarían ciclos en el grafo.
+    }
+
+    render();
 </script>
+
 </body>
 </html>
